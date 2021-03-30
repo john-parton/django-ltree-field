@@ -11,7 +11,11 @@ PostgreSQL LTreeField for Django
 .. image:: https://codecov.io/gh/john-parton/django-ltree-field/branch/master/graph/badge.svg
     :target: https://codecov.io/gh/john-parton/django-ltree-field
 
-LTreeField for Django
+Minimalist Django Field for the PostgreSQL ltree Type.
+
+django-ltree-field attempts to make very few assumptions about your use case.
+
+For a higher level API based on django-ltree-field, consider using a prebuilt model from django-ltree-utils
 
 Documentation
 -------------

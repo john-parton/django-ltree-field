@@ -39,8 +39,12 @@ class NLevel(Func):
 
 class Index(Func):
     function = 'index'
-    arity = 2
     output_field = models.IntegerField()
+
+    def __init__(self, *expressions, **extra):
+        if len(expressions) not in {2, 3}:
+            raise ValueError('Index takes 2 or 3 arguments')
+        super().__init__(*expressions, **extra)
 
 
 # No text2ltree or ltree2text functions... not sure how useful they would be

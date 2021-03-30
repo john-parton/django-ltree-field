@@ -68,7 +68,7 @@ class LCA(Func):
         # Postgres docs say that LCA will only admit up to 8 arguments, but we'll let
         # the database backend throw that error, seems unlikely to occur
         # So arity should really be 1..=8
-        if not expressions):
+        if not expressions:
             raise ValueError('LCA takes at least one argument')
         super().__init__(*expressions, **extra)
 

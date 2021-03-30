@@ -47,12 +47,30 @@ class Index(Func):
         super().__init__(*expressions, **extra)
 
 
-# No text2ltree or ltree2text functions... not sure how useful they would be
+# No text2ltree or ltree2text functions... not sure how useful they would be\
+# How does this differ from Cast()? Just use Cast?
 
-# # I really doubt the usefulness of this function
-# class LCA(Func):
-#     function = 'lca'
-#     # This isn't supposed to take more than 9 arguments, according to docs
+# I really doubt the usefulness of this function, but it's here for completion sake
+class LCA(Func):
+    function = 'lca'
+    output_field = LTreeField()
+
+    @property
+    def template(self):
+        # Kind of hacky way to handle allowing a single array arg
+        # We might want to be smarter than this
+        if len(self.source_expressions) == 1:
+            return '%(function)s(%(expressions)s::ltree[])'
+        else:
+            return '%(function)s(%(expressions)s)'
+
+    def __init__(self, *expressions, **extra):
+        # Postgres docs say that LCA will only admit up to 8 arguments, but we'll let
+        # the database backend throw that error, seems unlikely to occur
+        # So arity should really be 1..=8
+        if not expressions):
+            raise ValueError('LCA takes at least one argument')
+        super().__init__(*expressions, **extra)
 
 
 class Concat(Func):

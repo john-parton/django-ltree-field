@@ -1,0 +1,14 @@
+version: '2.2'
+
+services:
+
+  db:
+    image: postgres:13.2
+    shm_size: 1g
+    ports:
+      - "5444:5432"
+    environment:
+      # Obviously don't use this in production
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_db

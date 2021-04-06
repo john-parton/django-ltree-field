@@ -121,6 +121,19 @@ class ChildOfLookup(Lookup):
 
 
 @LTreeField.register_lookup
+class ParentOfLookup(Lookup):
+    # This can be done other ways, but it's a common enough use-case/
+    # pattern that we want a shortcut
+    lookup_name = 'parent_of'
+
+    def as_sql(self, compiler, connection):
+        lhs, lhs_params = self.process_lhs(compiler, connection)
+        rhs, rhs_params = self.process_rhs(compiler, connection)
+        params = lhs_params + rhs_params
+        return '%s = subpath(%s, 0, -1)' % (lhs, rhs), params
+
+
+@LTreeField.register_lookup
 class MatchesLookup(PostgresOperatorLookup):
     lookup_name = 'matches'
     postgres_operator = '~'

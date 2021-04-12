@@ -32,9 +32,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # I didn't realize how much I rely on shell_plus for prototyping
-    'django_extensions',
-
     # For actual testing
     'django.contrib.postgres',
     'django_ltree_field',

@@ -11,7 +11,7 @@ Tests for `django_ltree_field` models module.
 from django.db.models import Value, Q
 from django.test import TestCase
 
-from django_ltree_field.functions import *
+from django_ltree_field.functions import Concat, Subpath
 from django_ltree_field.test_utils.test_app.models import SimpleNode
 
 
@@ -98,8 +98,8 @@ class TestSimpleNode(TestCase):
                 ['Top', 'Science', 'Astronomy', 'Cosmology']
             ],
             SimpleNode.objects.filter(
-                ~Q(path='Top.Science') &
-                Q(path__descendant_of='Top.Science')
+                ~Q(path='Top.Science')
+                & Q(path__descendant_of='Top.Science')
             ).values_list('path', flat=True)
         )
 

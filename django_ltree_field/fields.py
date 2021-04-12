@@ -145,7 +145,6 @@ class SearchLookup(PostgresOperatorLookup):
     postgres_operator = '@'
 
 
-
 @LTreeField.register_lookup
 class DepthTransform(Transform):
     # "depth" is slightly more usable than "nlevel"

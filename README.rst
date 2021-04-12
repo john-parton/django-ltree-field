@@ -55,14 +55,17 @@ Features
 --------
 
 * Implements **only** the bare minimum to make the ltree postgres type usuable
-* Does virtually no sanity checking. You can insert nodes without roots, and other
-* Does not implement an abstract "Node" model which has a nice API (See django-ltree-model for an example)
+* Does virtually no sanity checking. You can insert nodes without roots, and generally put the tree in a
+  bad state
+* LTreeField accepts a string of dotted labels, or a list of labels
+* The ltree type is adapted to a python list
+* Does not implement an abstract "Node" model which has a nicer API (See django-ltree-utils for ready-made classes and managers)
 
 Future Features?
 ----------------
 
-* Implement an LTree python class to use as a container. Current my_obj.path[0] will return the first character
-of the path, but it is probably more logical to return the first label. Subclass UserList?
+* Only *minimal* features required to make the field be reasonably usable will be added
+* Higher-level or richer features should be added to django-ltree-utils
 
 
 Running Tests

@@ -16,6 +16,13 @@ from django_ltree_field.test_utils.test_app.models import SimpleNode
 
 
 class TestSimpleNode(TestCase):
+    # TODO
+    # test_parent_of
+    # test_index
+    # test_slice
+    # test_lca (both array args and variadic args)
+    # test other functions
+
     def setUp(self):
         # Bulk create the example fixture
         PATHS = [

@@ -1,12 +1,9 @@
-=============================
+================================
 PostgreSQL LTreeField for Django
-=============================
+================================
 
 .. image:: https://badge.fury.io/py/django-ltree-field.svg
     :target: https://badge.fury.io/py/django-ltree-field
-
-.. image:: https://travis-ci.org/john-parton/django-ltree-field.svg?branch=master
-    :target: https://travis-ci.org/john-parton/django-ltree-field
 
 .. image:: https://codecov.io/gh/john-parton/django-ltree-field/branch/master/graph/badge.svg
     :target: https://codecov.io/gh/john-parton/django-ltree-field

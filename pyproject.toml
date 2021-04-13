@@ -1,6 +1,10 @@
 [build-system]
 requires = [
-  "setuptools >= 40.6.0",
-  "wheel"
+  "setuptools >= 45",
+  "wheel",
+  "setuptools_scm[toml]>=6.0"
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "django_ltree_field/version.py"

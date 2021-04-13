@@ -3,3 +3,10 @@
 max-line-length = 127
 ignore  =
     W503
+exclude =
+    django_ltree_field/migrations,
+    .git,
+    .tox,
+    docs/conf.py,
+    build,
+    dist

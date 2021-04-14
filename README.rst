@@ -89,7 +89,7 @@ Running Tests
 -------------
 
 You need to have a reasonably updated version of PostgreSQL listening on port 5444. You can use
-`docker-compose <https://docs.docker.com/compose/>` to start a server
+`docker-compose <https://docs.docker.com/compose/>`_ to start a server
 
 ::
 

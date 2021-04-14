@@ -57,11 +57,20 @@ Features
 --------
 
 * Implements **only** the bare minimum to make the ltree PostgreSQL type usable
-* Does virtually no sanity checking. You can insert nodes without roots, and generally put the tree in a
-  bad state
 * LTreeField accepts a string of dotted labels, or a list of labels
 * The ltree type is adapted to a Python list
+* Relatively complete set of lookups and transforms.
+
+..
+    _ TODO: Link docs for lookups and transforms
+
+
+Non-Features
+------------
+
 * Does not implement an abstract "Node" model which has a nicer API (See django-ltree-utils for ready-made classes and managers)
+* Does virtually no sanity checking. You can insert nodes without roots, and generally put the tree in a bad state
+* PostgreSQL compatibility only
 
 
 Future Features

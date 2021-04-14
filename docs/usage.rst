@@ -24,13 +24,13 @@ use the standard list and string methods.
 Examples
 ========
 
-Examples will assume you have a model named `MyModel` with a `path` attribute configured like so:
+Examples will assume you have a model named `SimpleNode` with a `path` attribute configured like so:
 
 .. code-block:: python
 
     from django_ltree_field.fields import LTreeField
 
-    class MyModel(models.Model):
+    class SimpleNode(models.Model):
         path = LTreeField(index=True, unique=True)
 
         class Meta:

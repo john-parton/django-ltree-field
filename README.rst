@@ -83,12 +83,3 @@ Does the code actually work?
     source <YOURVIRTUALENV>/bin/activate
     (myenv) $ pip install -r requirements.txt -r requirements_test.txt --upgrade
     (myenv) $ ./runtests.py
-
-
-Development commands
----------------------
-
-::
-
-    pip install -r requirements_dev.txt
-    invoke -l

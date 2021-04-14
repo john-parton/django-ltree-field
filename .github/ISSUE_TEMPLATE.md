@@ -1,7 +1,7 @@
 * PostgreSQL LTreeField for Django version:
 * Django version:
 * Python version:
-* Operating System:
+* PostgreSQL version:
 
 ### Description
 

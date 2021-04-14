@@ -81,7 +81,7 @@ Does the code actually work?
 
     source <YOURVIRTUALENV>/bin/activate
     (myenv) $ pip install -r requirements.txt -r requirements_test.txt --upgrade
-    (myenv) $ python -Werror runtests.py
+    (myenv) $ ./runtests.py
 
 
 Development commands

@@ -15,6 +15,10 @@ django-ltree-field attempts to make very few assumptions about your use case.
 For a higher level API based on django-ltree-field, consider using a prebuilt model from
 `django-ltree-utils <https://github.com/john-parton/django-ltree-utils>`_.
 
+It *should* be possible to re-implement the `django-treebeard <https://github.com/django-treebeard/django-treebeard>`_ API,
+allowing for drop-in compatibility, but that is not a specific goal at this time. If someone starts this, let me know and I
+will provide some assistance.
+
 Documentation
 -------------
 
@@ -43,7 +47,7 @@ Add an LTreeField to a new or existing model:
 
     from django_ltree_field.fields import LTreeField
 
-    class MyModel(models.Model):
+    class SimpleNode(models.Model):
         path = LTreeField(index=True, unique=True)
 
         class Meta:
@@ -52,18 +56,24 @@ Add an LTreeField to a new or existing model:
 Features
 --------
 
-* Implements **only** the bare minimum to make the ltree postgres type usuable
+* Implements **only** the bare minimum to make the ltree PostgreSQL type usable
 * Does virtually no sanity checking. You can insert nodes without roots, and generally put the tree in a
   bad state
 * LTreeField accepts a string of dotted labels, or a list of labels
-* The ltree type is adapted to a python list
+* The ltree type is adapted to a Python list
 * Does not implement an abstract "Node" model which has a nicer API (See django-ltree-utils for ready-made classes and managers)
 
-Future Features?
-----------------
 
-* Only *minimal* features required to make the field be reasonably usable will be added
-* Higher-level or richer features should be added to django-ltree-utils
+Future Features
+---------------
+
+I will happily accept *minimal* features required to make the field be reasonably usable. In particular, every operator,
+function, and example on the `official PostgreSQL docs <https://www.postgresql.org/docs/current/ltree.html>`_
+should be implemented with Django's ORM, with no RawSQL or non-idiomatic code.
+
+Higher-level or richer features should be contributed to `django-ltree-utils <https://github.com/john-parton/django-ltree-utils>`_.
+As a rule of thumb, if an operation requires referencing more than one row at a time, or maintaining some more complicated
+state, it probably belongs there.
 
 
 Running Tests

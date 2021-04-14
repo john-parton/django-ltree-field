@@ -13,7 +13,7 @@ Minimalist Django Field for the PostgreSQL ltree Type.
 django-ltree-field attempts to make very few assumptions about your use case.
 
 For a higher level API based on django-ltree-field, consider using a prebuilt model from
-`django-ltree-utils <https://github.com/john-parton/django-ltree-utils>`
+`django-ltree-utils <https://github.com/john-parton/django-ltree-utils>`_.
 
 Documentation
 -------------

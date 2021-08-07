@@ -1,3 +1,6 @@
+[project]
+name = "django_ltree_field"
+
 [build-system]
 requires = [
   "setuptools >= 45",

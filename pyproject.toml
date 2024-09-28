@@ -1,14 +1,33 @@
 [project]
 name = "django_ltree_field"
-
-[build-system]
-requires = [
-  "setuptools >= 45",
-  "wheel",
-  "setuptools_scm[toml]>=6.0"
+version = "0.1.7"
+description = "postgresql ltree for django"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "django>=4.2.16",
+    "psycopg>=3.2.2",
 ]
-build-backend = "setuptools.build_meta"
 
-[tool.setuptools_scm]
-write_to = "django_ltree_field/version.py"
-local_scheme = "dirty-tag"
+[tool.ruff]
+target-version = "py39"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["ISC001", "COM812"]
+fixable = ["ALL"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest-django>=4.9.0",
+    "pytest>=8.3.3",
+    "ruff>=0.6.8",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.test_settings"
+python_files = ["tests.py"]

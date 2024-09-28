@@ -1,4 +1,5 @@
-#!/usr/bin/env -S python -Wall
+#!/usr/bin/env python
+
 import os
 import sys
 
@@ -7,17 +8,14 @@ from django.conf import settings
 from django.test.utils import get_runner
 
 
-def run_tests(*test_args):
-    if not test_args:
-        test_args = ['tests']
-
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'tests.settings'
+def run_tests(tests):
+    os.environ["DJANGO_SETTINGS_MODULE"] = "tests.test_settings"
     django.setup()
     TestRunner = get_runner(settings)
     test_runner = TestRunner()
-    failures = test_runner.run_tests(test_args)
+    return test_runner.run_tests(tests)
+
+
+if __name__ == "__main__":
+    failures = run_tests(["tests"])
     sys.exit(bool(failures))
-
-
-if __name__ == '__main__':
-    run_tests(*sys.argv[1:])

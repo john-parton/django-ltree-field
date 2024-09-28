@@ -83,6 +83,9 @@ DATABASES = {
         "PASSWORD": "postgres",
         "HOST": "localhost",
         "PORT": "5444",
+        "OPTIONS": {
+            "server_side_binding": True,
+        },
     }
 }
 

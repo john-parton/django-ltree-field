@@ -5,7 +5,7 @@ test_django_tree_field
 Tests for `django_ltree_field` models module.
 """
 
-from django.db.models import Q, Value, OuterRef, Subquery, Count
+from django.db.models import Q, Value, OuterRef, Subquery, Count, Exists
 from django.test import TestCase
 
 from django_ltree_field.functions import Concat, Subpath
@@ -111,6 +111,19 @@ class TestSimpleNode(TestCase):
             ),
         )
 
+    def test_descendant_of_list(self):
+        self.assertSequenceEqual(
+            [
+                ["Top", "Science"],
+                ["Top", "Science", "Astronomy"],
+                ["Top", "Science", "Astronomy", "Astrophysics"],
+                ["Top", "Science", "Astronomy", "Cosmology"],
+            ],
+            SimpleNode.objects.filter(
+                path__descendant_of=[["Top.Science"]]
+            ).values_list("path", flat=True),
+        )
+
     def test_pattern_matching(self):
         self.assertSequenceEqual(
             [
@@ -211,6 +224,31 @@ class TestSimpleNode(TestCase):
                 (["Top", "Science", "Astronomy"], 2),
                 (["Top", "Science", "Astronomy", "Astrophysics"], 0),
                 (["Top", "Science", "Astronomy", "Cosmology"], 0),
+            ],
+        )
+
+    def test_is_leaf(self):
+        qs = SimpleNode.objects.filter(
+            ~Exists(
+                SimpleNode.objects.filter(
+                    # Exclude self
+                    # Could also do ~Q(path=OuterRef("path"))
+                    Q(path__descendant_of=OuterRef("path")) & ~Q(id=OuterRef("id"))
+                )
+                .order_by()
+                .values("id")
+            )
+        )
+
+        self.assertSequenceEqual(
+            qs.values_list("path", flat=True),
+            [
+                ["Top", "Collections", "Pictures", "Astronomy", "Astronauts"],
+                ["Top", "Collections", "Pictures", "Astronomy", "Galaxies"],
+                ["Top", "Collections", "Pictures", "Astronomy", "Stars"],
+                ["Top", "Hobbies", "Amateurs_Astronomy"],
+                ["Top", "Science", "Astronomy", "Astrophysics"],
+                ["Top", "Science", "Astronomy", "Cosmology"],
             ],
         )
 

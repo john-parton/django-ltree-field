@@ -1,54 +1,17 @@
 from functools import partial
 
-from django import forms
-from django.contrib.postgres.forms import SimpleArrayField
 from django.db import models
 from django.db.models import Lookup, Transform
 from django.db.models.lookups import PostgresOperatorLookup
-
-from .validators import label_validator
 
 
 class LTreeField(models.Field):
     def db_type(self, connection):
         return "ltree"
 
-    def formfield(self, **kwargs):
-        # Set up some overrideable defaults
-        kwargs = {
-            # Bind required positional argument
-            "form_class": partial(
-                SimpleArrayField, forms.CharField(validators=[label_validator])
-            ),
-            "min_length": 1,
-            "delimiter": ".",
-            **kwargs,
-        }
-        return super().formfield(**defaults)
-
     # TODO Implement validate method?
 
-    def from_db_value(self, value, *args, **kwargs):
-        # NULL
-        if value is None:
-            return None
-        # Special "root" object
-        if value == "":
-            return []
-        # Dotted string
-        if not isinstance(value, list):
-            return value.split(".")
-        # Something else
-        return value
-
-    def get_prep_value(self, value):
-        if value is None:
-            return None
-        if isinstance(value, list):
-            return ".".join(value)
-        return value
-
-    def get_transform(self, name):
+    def get_transform(self, name: str):
         # This implements index and slicing lookups
         # So path__0 gives the root label and
         # path__0_2 gives the first two labels
@@ -100,7 +63,7 @@ class SiblingOfLookup(Lookup):
         lhs, lhs_params = self.process_lhs(compiler, connection)
         rhs, rhs_params = self.process_rhs(compiler, connection)
         params = lhs_params + rhs_params
-        return "subpath(%s, 0, -1) = subpath(%s, 0, -1)" % (lhs, rhs), params
+        return f"subpath({lhs}, 0, -1) = subpath({rhs}, 0, -1)", params
 
 
 @LTreeField.register_lookup
@@ -113,7 +76,7 @@ class ChildOfLookup(Lookup):
         lhs, lhs_params = self.process_lhs(compiler, connection)
         rhs, rhs_params = self.process_rhs(compiler, connection)
         params = lhs_params + rhs_params
-        return "subpath(%s, 0, -1) = %s" % (lhs, rhs), params
+        return f"subpath({lhs}, 0, -1) = {rhs}", params
 
 
 @LTreeField.register_lookup
@@ -126,7 +89,7 @@ class ParentOfLookup(Lookup):
         lhs, lhs_params = self.process_lhs(compiler, connection)
         rhs, rhs_params = self.process_rhs(compiler, connection)
         params = lhs_params + rhs_params
-        return "%s = subpath(%s, 0, -1)" % (lhs, rhs), params
+        return f"{lhs} = subpath({rhs}, 0, -1)", params
 
 
 @LTreeField.register_lookup
@@ -160,7 +123,7 @@ class IndexTransform(Transform):
 
     def as_sql(self, compiler, connection):
         lhs, params = compiler.compile(self.lhs)
-        return "subltree(%s, %%s, %%s)" % lhs, params + [self.index, self.index + 1]
+        return f"subltree({lhs}, %s, %s)", params + [self.index, self.index + 1]
 
     output_field = models.CharField()
 
@@ -173,7 +136,7 @@ class SliceTransform(Transform):
 
     def as_sql(self, compiler, connection):
         lhs, params = compiler.compile(self.lhs)
-        return "subltree(%s, %%s, %%s)" % lhs, params + [self.start, self.end]
+        return f"subltree({lhs}, %s, %s)", params + [self.start, self.end]
 
     @property
     def output_field(self):

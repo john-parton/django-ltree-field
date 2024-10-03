@@ -1,19 +1,22 @@
-.. complexity documentation master file, created by
-   sphinx-quickstart on Tue Jul  9 22:26:36 2013.
+.. django_ltree_field documentation master file, created by
+   sphinx-quickstart on Sat Sep 28 15:52:09 2024.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to PostgreSQL LTreeField for Django's documentation!
-=================================================================
-
-Contents:
+Welcome to django_ltree_field's documentation!
+==============================================
 
 .. toctree::
    :maxdepth: 2
+   :caption: Contents:
+   :glob:
 
-   readme
-   installation
-   usage
-   contributing
-   authors
-   history
+   ref/*
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

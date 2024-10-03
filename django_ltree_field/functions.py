@@ -21,14 +21,15 @@ class Subpath(Func):
     Three args returns subpath of ltree starting at position offset, with length len.
     If offset is negative, subpath starts that far from the end of the path.
     If len is negative, leaves that many labels off the end of the path.
-    Two args returns subpath of ltree starting at position offset, extending to end of path.
+    Two args returns subpath of ltree starting at position offset, extending to end of
+    path.
     If offset is negative, subpath starts that far from the end of the path.
     """
 
     function = "subpath"
     output_field = LTreeField()  # type: ignore[assignment]
 
-    def __init__(self, *expressions: Expression):
+    def __init__(self, *expressions: Expression | str):
         if len(expressions) not in {2, 3}:
             msg = "Subpath takes 2 or 3 arguments"
             raise ValueError(msg)
@@ -100,3 +101,7 @@ class Concat(Func):
             msg = "Concat takes at least 2 arguments"
             raise ValueError(msg)
         super().__init__(*expressions)
+
+
+class Array(Func):
+    template = "ARRAY[%(expressions)s]"

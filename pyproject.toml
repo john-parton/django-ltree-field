@@ -15,7 +15,7 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["ISC001", "COM812"]
+ignore = ["ISC001", "COM812", "PT009"]
 fixable = ["ALL"]
 
 [tool.ruff.lint.pydocstyle]

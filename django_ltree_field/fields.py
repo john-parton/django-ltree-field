@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
+from typing import Literal
 
 from django.contrib.postgres.lookups import ContainedBy, DataContains
 from django.db import models
@@ -9,18 +10,18 @@ from django.db.models.lookups import PostgresOperatorLookup
 
 
 class LTreeField(models.Field):
-    def db_type(self, connection):
+    def db_type(self, connection) -> Literal["ltree"]:
         return "ltree"
 
     # TODO Implement validate method?
 
     def get_transform(self, name: str):
+        if transform := super().get_transform(name):
+            return transform
+
         # This implements index and slicing lookups
         # So path__0 gives the root label and
         # path__0_2 gives the first two labels
-        transform = super().get_transform(name)
-        if transform:
-            return transform
 
         # Postgres uses 0-indexing for the Subltree function
         # No need to shift by one like the Array transforms
@@ -32,13 +33,15 @@ class LTreeField(models.Field):
         try:
             indices = list(map(int, name.split("_")))
         except ValueError:
-            pass
-        else:
-            # Bind the indices as appropriate
-            if len(indices) == 1:
-                return partial(IndexTransform, *indices)
-            elif len(indices) == 2:
-                return partial(SliceTransform, *indices)
+            return None
+
+        # Bind the indices as appropriate
+        if len(indices) == 1:
+            return partial(IndexTransform, *indices)
+        if len(indices) == 2:
+            return partial(SliceTransform, *indices)
+
+        return None
 
 
 LTreeField.register_lookup(DataContains)
@@ -47,8 +50,8 @@ LTreeField.register_lookup(ContainedBy)
 
 @LTreeField.register_lookup
 class SiblingOfLookup(Lookup):
-    # This can be done other ways, but it's a common enough use-case/
-    # pattern that we want a shortcut
+    # This can be done other ways, but it's a common enough use-case/pattern that we
+    # want a shortcut
     lookup_name = "sibling_of"
 
     def as_sql(self, compiler, connection):
@@ -60,8 +63,8 @@ class SiblingOfLookup(Lookup):
 
 @LTreeField.register_lookup
 class ChildOfLookup(Lookup):
-    # This can be done other ways, but it's a common enough use-case/
-    # pattern that we want a shortcut
+    # This can be done other ways, but it's a common enough use-case/pattern that we
+    # want a shortcut
     lookup_name = "child_of"
 
     def as_sql(self, compiler, connection):
@@ -105,7 +108,7 @@ class DepthTransform(Transform):
     lookup_name = "depth"
     function = "NLEVEL"
 
-    output_field = models.PositiveIntegerField()
+    output_field = models.PositiveIntegerField()  # type: ignore[assignment]
 
 
 class IndexTransform(Transform):
@@ -115,7 +118,7 @@ class IndexTransform(Transform):
         super().__init__()
         self.index = index
 
-    def as_sql(self, compiler, connection):
+    def as_sql(self, compiler, connection):  # noqa: ARG002
         lhs, params = compiler.compile(self.lhs)
         return f"subltree({lhs}, %s, %s)", params + [self.index, self.index + 1]
 
@@ -128,6 +131,6 @@ class SliceTransform(Transform):
         self.start = start
         self.end = end
 
-    def as_sql(self, compiler, connection):
+    def as_sql(self, compiler, connection):  # noqa: ARG002
         lhs, params = compiler.compile(self.lhs)
         return f"subltree({lhs}, %s, %s)", params + [self.start, self.end]

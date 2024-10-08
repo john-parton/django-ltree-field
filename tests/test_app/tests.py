@@ -10,10 +10,24 @@ from django.db.models import Count, Exists, OuterRef, Q, Subquery, Value
 from django.test import TestCase
 
 from django_ltree_field.fields import LTreeField
-from django_ltree_field.functions import Concat, Subpath, Array
+from django_ltree_field.functions import Concat, Subpath
 from django.db.models.functions import Cast
 
 from .models import SimpleNode
+
+
+class TestConstraints(TestCase):
+    # def test_forbid_unrooted(self):
+    # with self.assertRaises(ValueError):
+    #     SimpleNode.objects.create(path="fjkdlsdfjkl.sdf.fsdsdf")
+
+    def test_forbid_delete(self):
+        SimpleNode.objects.create(path="Top")
+        SimpleNode.objects.create(path="Top.Collections")
+
+        SimpleNode.objects.filter(path="Top").delete()
+
+        assert False, SimpleNode.objects.filter(path="Top.Collections").exists()
 
 
 class TestSimpleNode(TestCase):

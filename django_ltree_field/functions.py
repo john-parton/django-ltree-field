@@ -101,7 +101,3 @@ class Concat(Func):
             msg = "Concat takes at least 2 arguments"
             raise ValueError(msg)
         super().__init__(*expressions)
-
-
-class Array(Func):
-    template = "ARRAY[%(expressions)s]"

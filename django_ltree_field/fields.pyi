@@ -1,3 +1,0 @@
-from django.db import models
-
-class LTreeField[_S = str, _G = str](models.Field[_S, _G]): ...

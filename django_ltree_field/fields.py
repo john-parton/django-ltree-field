@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 from functools import partial
 from typing import Literal
 
@@ -7,11 +8,41 @@ from django.contrib.postgres.lookups import ContainedBy, DataContains
 from django.db import models
 from django.db.models import Lookup, Transform
 from django.db.models.lookups import PostgresOperatorLookup
+from django.utils.translation import gettext_lazy as _
+
+
+class LTreeTrigger(enum.Enum):
+    PROTECT = "PROTECT"
+    CASCADE = "CASCADE"
 
 
 class LTreeField(models.Field):
+    # Aliases for users
+    PROTECT = LTreeTrigger.PROTECT
+    CASCADE = LTreeTrigger.CASCADE
+
+    triggers: LTreeTrigger | None
+
+    def __init__(
+        self,
+        *args,
+        triggers: LTreeTrigger | None = LTreeTrigger.CASCADE,
+        **kwargs,
+    ):
+        self.triggers = triggers
+        super().__init__(*args, **kwargs)
+
+    @property
+    def description(self):
+        return _("Path (ltree)")
+
     def db_type(self, connection) -> Literal["ltree"]:
         return "ltree"
+
+    def deconstruct(self):
+        name, path, args, kwargs = super().deconstruct()
+        kwargs["triggers"] = self.triggers
+        return name, path, args, kwargs
 
     # TODO Implement validate method?
 

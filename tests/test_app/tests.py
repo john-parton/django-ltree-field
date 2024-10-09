@@ -7,11 +7,11 @@ Tests for `django_ltree_field` models module.
 
 from django.contrib.postgres.fields import ArrayField
 from django.db.models import Count, Exists, OuterRef, Q, Subquery, Value
+from django.db.models.functions import Cast
 from django.test import TestCase
 
 from django_ltree_field.fields import LTreeField
 from django_ltree_field.functions import Concat, Subpath
-from django.db.models.functions import Cast
 
 from .models import SimpleNode
 

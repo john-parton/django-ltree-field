@@ -39,3 +39,19 @@ class NullableNode(models.Model):
         if self.path is None:
             return "NULL"
         return ".".join(self.path)
+
+
+class ProtectedNode(models.Model):
+    path = LTreeField(triggers=LTreeField.PROTECT)
+
+    class Meta:
+        indexes: ClassVar = [
+            GistIndex(
+                fields=("path",),
+                name="protected_node_path_idx",
+            ),
+        ]
+        ordering: ClassVar = ["path"]
+
+    def __str__(self):
+        return ".".join(self.path)

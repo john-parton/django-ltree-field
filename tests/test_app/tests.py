@@ -8,26 +8,60 @@ Tests for `django_ltree_field` models module.
 from django.contrib.postgres.fields import ArrayField
 from django.db.models import Count, Exists, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Cast
+from django.db.utils import InternalError
 from django.test import TestCase
 
 from django_ltree_field.fields import LTreeField
 from django_ltree_field.functions import Concat, Subpath
 
-from .models import SimpleNode
+from .models import ProtectedNode, SimpleNode
 
 
-class TestConstraints(TestCase):
+class TestCascade(TestCase):
     # def test_forbid_unrooted(self):
     # with self.assertRaises(ValueError):
     #     SimpleNode.objects.create(path="fjkdlsdfjkl.sdf.fsdsdf")
 
-    def test_forbid_delete(self):
+    def test_cascade_delete(self):
         SimpleNode.objects.create(path="Top")
         SimpleNode.objects.create(path="Top.Collections")
 
+        self.assertTrue(SimpleNode.objects.filter(path="Top.Collections").exists())
+
         SimpleNode.objects.filter(path="Top").delete()
 
-        assert False, SimpleNode.objects.filter(path="Top.Collections").exists()
+        self.assertFalse(SimpleNode.objects.filter(path="Top.Collections").exists())
+
+    def test_cascade_update(self):
+        SimpleNode.objects.create(path="Top")
+        SimpleNode.objects.create(path="Top.Collections")
+
+        self.assertTrue(SimpleNode.objects.filter(path="Top.Collections").exists())
+
+        SimpleNode.objects.filter(path="Top").update(path="Top2")
+
+        self.assertFalse(SimpleNode.objects.filter(path="Top.Collections").exists())
+        self.assertTrue(SimpleNode.objects.filter(path="Top2.Collections").exists())
+
+
+class TestProtected(TestCase):
+    def test_protected_delete(self):
+        ProtectedNode.objects.create(path="Top")
+        ProtectedNode.objects.create(path="Top.Collections")
+
+        self.assertTrue(ProtectedNode.objects.filter(path="Top.Collections").exists())
+
+        with self.assertRaises(InternalError):
+            ProtectedNode.objects.filter(path="Top").delete()
+
+    def test_protected_update(self):
+        ProtectedNode.objects.create(path="Top")
+        ProtectedNode.objects.create(path="Top.Collections")
+
+        self.assertTrue(ProtectedNode.objects.filter(path="Top.Collections").exists())
+
+        with self.assertRaises(InternalError):
+            ProtectedNode.objects.filter(path="Top").update(path="Top2")
 
 
 class TestSimpleNode(TestCase):

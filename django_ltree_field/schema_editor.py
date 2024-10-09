@@ -110,19 +110,20 @@ class DatabaseSchemaEditorMixin:
                         WHERE
                             {column_name} <@ OLD.{column_name} AND {column_name} != OLD.{column_name}
                     ) THEN
-                        RAISE EXCEPTION $err$Cannot delete '%s' while "{table_name}"."{column_name}" has descendants.$err$, OLD.{column_name};
+                        RAISE EXCEPTION $err$Cannot delete '%%s' while {table_name}.{column_name} has descendants.$err$, OLD.{column_name};
                     END IF;
                 ELSIF (TG_OP = 'UPDATE') THEN
-                    IF EXISTS (
+                    IF OLD.{column_name} IS DISTINCT FROM NEW.{column_name} AND EXISTS (
                         SELECT
                             1
                         FROM
                             {table_name}
                         WHERE
-                            {column_name} <@ NEW.{column_name} AND {column_name} != NEW.{column_name}
+                            {column_name} <@ OLD.{column_name} AND {column_name} != OLD.{column_name}
                     ) THEN
-                        RAISE EXCEPTION $err$Cannot update '%s' while "{table_name}"."{column_name}" has descendants.$err$, NEW.{column_name};
+                        RAISE EXCEPTION $err$Cannot move '%%s' while {table_name}.{column_name} has descendants.$err$, NEW.{column_name};
                     END IF;
+                END IF;
                 RETURN OLD;
             END;
             $func$ LANGUAGE plpgsql;
@@ -179,10 +180,14 @@ class DatabaseSchemaEditorMixin:
         else:
             raise AssertionError
 
+        # We might prefer
+        # WHEN (OLD.{meta['column_name']} IS DISTINCT FROM NEW.{meta['column_name']})
+        # instead of UPDATE OF ?
+
         self.execute(
             f"""
             CREATE TRIGGER {meta['trigger_name']}
-                BEFORE DELETE OR UPDATE
+                BEFORE DELETE OR UPDATE OF {meta['column_name']}
                 ON {meta['table_name']}
                 FOR EACH ROW
                 EXECUTE PROCEDURE {meta['function_name']}();

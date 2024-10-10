@@ -2,7 +2,7 @@ from typing import ClassVar
 from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 
-from django_ltree_field.fields import LTreeField
+from django_ltree_field.fields import IntegerLTreeField, LTreeField
 
 
 # Test models
@@ -55,3 +55,19 @@ class ProtectedNode(models.Model):
 
     def __str__(self):
         return ".".join(self.path)
+
+
+class IntegerNode(models.Model):
+    path = IntegerLTreeField(triggers=LTreeField.CASCADE)
+
+    class Meta:
+        indexes: ClassVar = [
+            GistIndex(
+                fields=("path",),
+                name="auto_node_path_idx",
+            ),
+        ]
+        ordering: ClassVar = ["path"]
+
+    def __str__(self):
+        return ".".join(map(str, self.path))

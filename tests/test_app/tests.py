@@ -14,7 +14,13 @@ from django.test import TestCase
 from django_ltree_field.fields import LTreeField
 from django_ltree_field.functions import Concat, Subpath
 
-from .models import ProtectedNode, SimpleNode
+from .models import ProtectedNode, SimpleNode, IntegerNode
+
+
+class TestIntegerNode(TestCase):
+    def test_create(self):
+        IntegerNode.objects.create(path=(1, 2, 3))
+        assert False, IntegerNode.objects.all().values("path")
 
 
 class TestCascade(TestCase):
@@ -42,6 +48,16 @@ class TestCascade(TestCase):
 
         self.assertFalse(SimpleNode.objects.filter(path="Top.Collections").exists())
         self.assertTrue(SimpleNode.objects.filter(path="Top2.Collections").exists())
+
+    def test_bulk_move(self):
+        raise AssertionError
+        # Example to move all matching nodes to be children of a new nodeIs j
+        SimpleNode.objects.update(
+            path=Concat(
+                Value("Top2"),
+                Subpath("path", Value(1)),
+            )
+        )
 
 
 class TestProtected(TestCase):

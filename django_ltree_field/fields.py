@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-import enum
 from functools import partial
-from typing import Literal
+from typing import Any, Literal
 
+from django.core.exceptions import ValidationError
 from django.contrib.postgres.lookups import ContainedBy, DataContains
 from django.db import models
 from django.db.models import Lookup, Transform
 from django.db.models.lookups import PostgresOperatorLookup
 from django.utils.translation import gettext_lazy as _
 
-
-class LTreeTrigger(enum.Enum):
-    PROTECT = "PROTECT"
-    CASCADE = "CASCADE"
+from .constants import LTreeTrigger
+from .integer_paths import Codec
 
 
 class LTreeField(models.Field):
@@ -68,9 +66,9 @@ class LTreeField(models.Field):
 
         # Bind the indices as appropriate
         if len(indices) == 1:
-            return partial(IndexTransform, *indices)
+            return partial(IndexTransform, *indices, output_field=type(self))
         if len(indices) == 2:
-            return partial(SliceTransform, *indices)
+            return partial(SliceTransform, *indices, output_field=type(self))
 
         return None
 
@@ -143,8 +141,6 @@ class DepthTransform(Transform):
 
 
 class IndexTransform(Transform):
-    output_field = models.CharField()  # type: ignore[assignment]
-
     def __init__(self, index: int):
         super().__init__()
         self.index = index
@@ -155,8 +151,6 @@ class IndexTransform(Transform):
 
 
 class SliceTransform(Transform):
-    output_field = LTreeField()  # type: ignore[assignment]
-
     def __init__(self, start: int, end: int):
         super().__init__()
         self.start = start
@@ -165,3 +159,48 @@ class SliceTransform(Transform):
     def as_sql(self, compiler, connection):  # noqa: ARG002
         lhs, params = compiler.compile(self.lhs)
         return f"subltree({lhs}, %s, %s)", params + [self.start, self.end]
+
+
+class IntegerLTreeField(LTreeField):
+    def from_db_value(self, value, expression, connection) -> tuple[int, ...] | None:
+        return self.to_python(value)
+
+    def to_python(self, value) -> tuple[int, ...] | None:
+        if value is None:
+            return None
+
+        if isinstance(value, tuple):
+            # Doesn't actually check that values are integers
+            return value
+
+        if not isinstance(value, str):
+            msg = _("Expected string")
+            raise ValidationError(msg)
+
+        codec = Codec()
+
+        return tuple(codec.decode(label) for label in value.split("."))
+
+    def get_prep_value(self, value: list[int] | tuple[int] | str | None) -> str | None:
+        if value is None:
+            return None
+
+        if isinstance(value, str):
+            # Just assume the user knows what they're doing
+            return value
+
+        if not isinstance(value, (list, tuple)):
+            msg = _("Expected list or tuple")
+            raise ValidationError(msg)
+
+        for label in value:
+            if not isinstance(label, int):
+                msg = _("Expected integer")
+                raise ValidationError(msg)
+            if label < 0:
+                msg = _("Expected positive integer")
+                raise ValidationError(msg)
+
+        codec = Codec()
+
+        return ".".join(codec.encode(label) for label in value)

@@ -58,7 +58,7 @@ class ProtectedNode(models.Model):
 
 
 class IntegerNode(models.Model):
-    path = IntegerLTreeField(triggers=LTreeField.CASCADE)
+    path = IntegerLTreeField(triggers=LTreeField.PROTECT)
 
     class Meta:
         indexes: ClassVar = [

@@ -5,7 +5,7 @@ from django.apps import AppConfig
 from django.conf import settings
 from django.db.utils import load_backend
 
-from .schema_editor import DatabaseSchemaEditorMixin
+from .schema_editor import DatabaseSchemaEditorMixin, DatabaseSchemaEditorProtocol
 from .settings import should_patch_schema_editor
 
 
@@ -23,6 +23,14 @@ def patch_schema_editor() -> None:
             )
             and not issubclass(schema_editor_class, DatabaseSchemaEditorMixin)
         ):
+            if not issubclass(schema_editor_class, DatabaseSchemaEditorProtocol):
+                msg = (
+                    f"Schema editor class {schema_editor_class!r} does not implement "
+                    "DatabaseSchemaEditorProtocol.  Most likely you are on a version of "
+                    "Django that is not supported by django-ltree-field."
+                )
+                raise TypeError(msg)
+
             backend.DatabaseWrapper.SchemaEditorClass = type(
                 "DatabaseSchemaEditor",
                 (DatabaseSchemaEditorMixin, schema_editor_class),

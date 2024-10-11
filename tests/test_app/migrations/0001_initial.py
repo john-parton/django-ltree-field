@@ -6,44 +6,96 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='NullableNode',
+            name="NullableNode",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('path', django_ltree_field.fields.LTreeField(null=True, triggers=django_ltree_field.fields.LTreeTrigger['CASCADE'])),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "path",
+                    django_ltree_field.fields.LTreeField(
+                        null=True,
+                        triggers=django_ltree_field.fields.LTreeTrigger["CASCADE"],
+                    ),
+                ),
             ],
             options={
-                'ordering': ['path'],
-                'indexes': [django.contrib.postgres.indexes.GistIndex(fields=['path'], name='nullable_node_path_idx')],
+                "ordering": ["path"],
+                "indexes": [
+                    django.contrib.postgres.indexes.GistIndex(
+                        fields=["path"], name="nullable_node_path_idx"
+                    )
+                ],
             },
         ),
         migrations.CreateModel(
-            name='ProtectedNode',
+            name="ProtectedNode",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('path', django_ltree_field.fields.LTreeField(triggers=django_ltree_field.fields.LTreeTrigger['PROTECT'])),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "path",
+                    django_ltree_field.fields.LTreeField(
+                        triggers=django_ltree_field.fields.LTreeTrigger["PROTECT"]
+                    ),
+                ),
             ],
             options={
-                'ordering': ['path'],
-                'indexes': [django.contrib.postgres.indexes.GistIndex(fields=['path'], name='protected_node_path_idx')],
+                "ordering": ["path"],
+                "indexes": [
+                    django.contrib.postgres.indexes.GistIndex(
+                        fields=["path"], name="protected_node_path_idx"
+                    )
+                ],
             },
         ),
         migrations.CreateModel(
-            name='SimpleNode',
+            name="SimpleNode",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('path', django_ltree_field.fields.LTreeField(triggers=django_ltree_field.fields.LTreeTrigger['CASCADE'])),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "path",
+                    django_ltree_field.fields.LTreeField(
+                        triggers=django_ltree_field.fields.LTreeTrigger["CASCADE"]
+                    ),
+                ),
             ],
             options={
-                'ordering': ['path'],
-                'indexes': [django.contrib.postgres.indexes.GistIndex(fields=['path'], name='simple_node_path_idx', opclasses=('gist_ltree_ops(siglen=100)',))],
+                "ordering": ["path"],
+                "indexes": [
+                    django.contrib.postgres.indexes.GistIndex(
+                        fields=["path"],
+                        name="simple_node_path_idx",
+                        opclasses=("gist_ltree_ops(siglen=100)",),
+                    )
+                ],
             },
         ),
     ]

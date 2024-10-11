@@ -7,21 +7,37 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('test_app', '0001_initial'),
+        ("test_app", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='AutoNode',
+            name="AutoNode",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('path', django_ltree_field.fields.IntegerLTreeField(triggers=django_ltree_field.constants.LTreeTrigger['CASCADE'])),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "path",
+                    django_ltree_field.fields.IntegerLTreeField(
+                        triggers=django_ltree_field.constants.LTreeTrigger["CASCADE"]
+                    ),
+                ),
             ],
             options={
-                'ordering': ['path'],
-                'indexes': [django.contrib.postgres.indexes.GistIndex(fields=['path'], name='auto_node_path_idx')],
+                "ordering": ["path"],
+                "indexes": [
+                    django.contrib.postgres.indexes.GistIndex(
+                        fields=["path"], name="auto_node_path_idx"
+                    )
+                ],
             },
         ),
     ]

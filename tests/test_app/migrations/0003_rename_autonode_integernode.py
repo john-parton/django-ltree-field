@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('test_app', '0002_autonode'),
+        ("test_app", "0002_autonode"),
     ]
 
     operations = [
         migrations.RenameModel(
-            old_name='AutoNode',
-            new_name='IntegerNode',
+            old_name="AutoNode",
+            new_name="IntegerNode",
         ),
     ]

@@ -7,7 +7,7 @@ from django_ltree_field.fields import IntegerLTreeField, LTreeField
 
 # Test models
 class SimpleNode(models.Model):
-    path = LTreeField()
+    path = LTreeField(unique=True)
 
     class Meta:
         indexes: ClassVar = [
@@ -24,7 +24,7 @@ class SimpleNode(models.Model):
 
 
 class NullableNode(models.Model):
-    path = LTreeField(null=True)
+    path = LTreeField(null=True, unique=True)
 
     class Meta:
         indexes: ClassVar = [
@@ -42,7 +42,7 @@ class NullableNode(models.Model):
 
 
 class ProtectedNode(models.Model):
-    path = LTreeField(triggers=LTreeField.PROTECT)
+    path = LTreeField(triggers=LTreeField.PROTECT, unique=True)
 
     class Meta:
         indexes: ClassVar = [

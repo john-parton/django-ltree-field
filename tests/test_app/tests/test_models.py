@@ -14,19 +14,22 @@ from django.test import TestCase
 from django_ltree_field.fields import LTreeField
 from django_ltree_field.functions import Concat, Subpath
 
-from .models import ProtectedNode, SimpleNode, IntegerNode
+from tests.test_app.models import ProtectedNode, SimpleNode
 
 
-class TestIntegerNode(TestCase):
-    def test_create(self):
-        IntegerNode.objects.create(path=(1, 2, 3))
-        assert False, IntegerNode.objects.all().values("path")
+# class TestIntegerNode(TestCase):
+#     def test_create(self):
+#         IntegerNode.objects.create(path=(100, 200, 300))
+#         assert False, IntegerNode.objects.all().values("path")
 
 
 class TestCascade(TestCase):
     # def test_forbid_unrooted(self):
     # with self.assertRaises(ValueError):
     #     SimpleNode.objects.create(path="fjkdlsdfjkl.sdf.fsdsdf")
+    def test_cascade_create(self):
+        with self.assertRaises(InternalError):
+            ProtectedNode.objects.create(path="Top.Unrooted.Deep.Down")
 
     def test_cascade_delete(self):
         SimpleNode.objects.create(path="Top")
@@ -50,7 +53,6 @@ class TestCascade(TestCase):
         self.assertTrue(SimpleNode.objects.filter(path="Top2.Collections").exists())
 
     def test_bulk_move(self):
-        raise AssertionError
         # Example to move all matching nodes to be children of a new nodeIs j
         SimpleNode.objects.update(
             path=Concat(
@@ -61,6 +63,10 @@ class TestCascade(TestCase):
 
 
 class TestProtected(TestCase):
+    def test_protected_create(self):
+        with self.assertRaises(InternalError):
+            ProtectedNode.objects.create(path="Top.Unrooted.Deep.Down")
+
     def test_protected_delete(self):
         ProtectedNode.objects.create(path="Top")
         ProtectedNode.objects.create(path="Top.Collections")

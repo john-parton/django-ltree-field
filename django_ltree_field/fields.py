@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from django.core.exceptions import ValidationError
 from django.contrib.postgres.lookups import ContainedBy, DataContains
@@ -11,7 +11,7 @@ from django.db.models.lookups import PostgresOperatorLookup
 from django.utils.translation import gettext_lazy as _
 
 from .constants import LTreeTrigger
-from .integer_paths import Codec
+from .integer_paths import default_codec
 
 
 class LTreeField(models.Field):
@@ -161,7 +161,23 @@ class SliceTransform(Transform):
         return f"subltree({lhs}, %s, %s)", params + [self.start, self.end]
 
 
+class CodecProtocol(Protocol):
+    def decode(self, value: str) -> int: ...
+
+    def encode(self, value: int) -> str: ...
+
+
 class IntegerLTreeField(LTreeField):
+    codec: CodecProtocol
+
+    def __init__(
+        self,
+        *args,
+        **kwargs,
+    ):
+        self.codec = kwargs.pop("codec") if "codec" in kwargs else default_codec()
+        super().__init__(*args, **kwargs)
+
     def from_db_value(self, value, expression, connection) -> tuple[int, ...] | None:
         return self.to_python(value)
 
@@ -177,9 +193,7 @@ class IntegerLTreeField(LTreeField):
             msg = _("Expected string")
             raise ValidationError(msg)
 
-        codec = Codec()
-
-        return tuple(codec.decode(label) for label in value.split("."))
+        return tuple(self.codec.decode(label) for label in value.split("."))
 
     def get_prep_value(self, value: list[int] | tuple[int] | str | None) -> str | None:
         if value is None:
@@ -201,6 +215,4 @@ class IntegerLTreeField(LTreeField):
                 msg = _("Expected positive integer")
                 raise ValidationError(msg)
 
-        codec = Codec()
-
-        return ".".join(codec.encode(label) for label in value)
+        return ".".join(self.codec.encode(label) for label in value)

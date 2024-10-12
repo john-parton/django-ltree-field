@@ -49,7 +49,7 @@ BEGIN
                 WHERE
                     {column_name} = subpath(NEW.{column_name}, 0, -1)
             ) THEN
-                RAISE EXCEPTION 'errrr';
+                RAISE EXCEPTION $err$Cannot insert '%%' into {table_name}.{column_name} because '%%' does not exist.$err$, NEW.{column_name}, subpath(NEW.{column_name}, 0, -1);
         END IF;
         RETURN NEW;
     ELSIF (TG_OP = 'UPDATE') THEN
@@ -79,7 +79,7 @@ BEGIN
             WHERE
                 {column_name} <@ OLD.{column_name} AND {column_name} != OLD.{column_name}
         ) THEN
-            RAISE EXCEPTION $err$Cannot delete '%%s' while {table_name}.{column_name} has descendants.$err$, OLD.{column_name};
+            RAISE EXCEPTION $err$Cannot delete '%%' while {table_name}.{column_name} has descendants.$err$, OLD.{column_name};
         END IF;
 
     ELSIF (TG_OP = 'INSERT') THEN
@@ -93,7 +93,7 @@ BEGIN
                 WHERE
                     {column_name} = subpath(NEW.{column_name}, 0, -1)
             ) THEN
-                RAISE EXCEPTION 'errrr';
+                RAISE EXCEPTION $err$Cannot insert '%%' into {table_name}.{column_name} because '%%' does not exist.$err$, NEW.{column_name}, subpath(NEW.{column_name}, 0, -1);
         END IF;
         RETURN NEW;
     ELSIF (TG_OP = 'UPDATE') THEN
@@ -105,7 +105,7 @@ BEGIN
             WHERE
                 {column_name} <@ OLD.{column_name} AND {column_name} != OLD.{column_name}
         ) THEN
-            RAISE EXCEPTION $err$Cannot move '%%s' while {table_name}.{column_name} has descendants.$err$, NEW.{column_name};
+            RAISE EXCEPTION $err$Cannot move '%%' while {table_name}.{column_name} has descendants.$err$, NEW.{column_name};
         END IF;
     END IF;
     RETURN OLD;

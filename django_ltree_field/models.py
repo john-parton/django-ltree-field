@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import ClassVar
+from tkinter import NO
+from typing import ClassVar, Literal, Self
 from django.db.models import QuerySet
 from django_ltree_field.fields import IntegerLTreeField
 
@@ -12,6 +13,13 @@ import enum
 
 
 type Path = tuple[int, ...]
+
+
+class NotProvided(enum.Enum):
+    NOT_PROVIDED = enum.auto()
+
+
+NOT_PROVIDED = NotProvided.NOT_PROVIDED
 
 
 class RelativePosition(enum.Enum):
@@ -40,69 +48,21 @@ class AbstractAutoNode(models.Model):
         ]
         ordering: ClassVar = ["path"]
 
-    def get_insertion_range(cls, **kwargs) -> tuple[Path | None, Path | None]:
-        """Get a valid insertion range for a new node."""
-        positions: dict[RelativePosition, tuple[int]] = {}
+    type MoveTarget = Literal[NotProvided.NOT_PROVIDED] | Self | tuple[int, ...]
 
-        for position in RelativePosition:
-            with suppress(KeyError):
-                positions[position] = kwargs.pop(position.value)
+    def move(
+        self,
+        **kwargs: MoveTarget,
+    ) -> None:
+        path, nth_child = RelativePosition.resolve(
+            kwargs,
+            path_field="path",
+            path_factory=self.__class__.path,
+        )
 
-        if len(positions) != 1:
-            msg = f"Could not resolve position: {positions!r}"
-            raise TypeError(msg)
+        if nth_child is not None:
+            raise ValueError(f"Expected nth_child=None, got nth_child={nth_child!r}")
 
-        if kwargs:
-            msg = f"Unexpected kwargs: {kwargs!r}"
-            raise TypeError(msg)
+        self.path = path
 
-        position, relative_to = positions.popitem()
-
-        match position:
-            case RelativePosition.ROOT:
-                left = (
-                    cls.objects.filter(path__depth=1)
-                    .order_by("-path")
-                    .values_list("path", flat=True)
-                    .first()
-                )
-                right = None
-                return left, right
-            case RelativePosition.FIRST_CHILD:
-                right = (
-                    cls.objects.filter(path__child_of=relative_to)
-                    .order_by("path")
-                    .first()
-                )
-                left = None
-                return left, right
-            case RelativePosition.LAST_CHILD:
-                left = (
-                    cls.objects.filter(path__child_of=relative_to)
-                    .order_by("-path")
-                    .first()
-                )
-                right = None
-                return left, right
-            case RelativePosition.BEFORE:
-                left = (
-                    cls.objects.filter(
-                        path__sibling_of=relative_to, path__lt=relative_to
-                    )
-                    .order_by("-path")
-                    .first()
-                )
-                right = (
-                    cls.objects.filter(
-                        path__sibling_of=relative_to, path__gt=relative_to
-                    )
-                    .order_by("path")
-                    .first()
-                )
-                return (
-                    cls.objects.filter(path__lt=relative_to).order_by("-path").first()
-                )
-            case RelativePosition.AFTER:
-                return cls.objects.filter(path__gt=relative_to).order_by("path").first()
-
-        return cls.objects.filter(path__contains=path).order_by("-path").first()
+        self.save()

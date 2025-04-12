@@ -162,6 +162,8 @@ class SliceTransform(Transform):
 
 
 class CodecProtocol(Protocol):
+    max_value: int  # Maybe this should be on the field directly?
+
     def decode(self, value: str) -> int: ...
 
     def encode(self, value: int) -> str: ...
@@ -177,6 +179,11 @@ class IntegerLTreeField(LTreeField):
     ):
         self.codec = kwargs.pop("codec") if "codec" in kwargs else default_codec()
         super().__init__(*args, **kwargs)
+
+    def deconstruct(self):
+        name, path, args, kwargs = super().deconstruct()
+        kwargs["codec"] = self.codec
+        return name, path, args, kwargs
 
     def from_db_value(self, value, expression, connection) -> tuple[int, ...] | None:
         return self.to_python(value)

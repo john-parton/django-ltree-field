@@ -3,6 +3,7 @@ from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 
 from django_ltree_field.fields import IntegerLTreeField, LTreeField
+from django_ltree_field.integer_paths import legacy_codec
 
 
 # Test models
@@ -58,7 +59,7 @@ class ProtectedNode(models.Model):
 
 
 class IntegerNode(models.Model):
-    path = IntegerLTreeField(triggers=LTreeField.PROTECT)
+    path = IntegerLTreeField(triggers=LTreeField.PROTECT, codec=legacy_codec())
 
     class Meta:
         indexes: ClassVar = [

@@ -1,4 +1,5 @@
 from typing import ClassVar
+
 from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 

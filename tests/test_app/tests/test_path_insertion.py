@@ -4,10 +4,10 @@ Tests for django_ltree_field path insertion utilities.
 This module tests the path insertion utilities used for managing the
 insertion of new nodes in tree structures.
 """
+
 from django.test import TestCase
 
 from django_ltree_field.path_insertion import (
-    MoveOp,
     range_excluding,
     rewrite_children_dense,
     rewrite_children_sparse,
@@ -34,8 +34,17 @@ class TestRangeExcluding(TestCase):
 
     def test_range_excluding_beyond(self):
         """Test excluding a value beyond the range."""
-        result = list(range_excluding(5, excluding=10))
-        self.assertEqual(result, [0, 1, 2, 3, 4])
+        with self.assertRaises(ValueError) as context:
+            list(range_excluding(5, excluding=5))
+
+        self.assertIn("Excluding value must be less than stop", str(context.exception))
+
+    def test_range_excluding_negative(self):
+        """Test excluding a negative value."""
+        with self.assertRaises(ValueError) as context:
+            list(range_excluding(5, excluding=-1))
+
+        self.assertIn("Excluding value must be non-negative", str(context.exception))
 
 
 class TestRewriteChildrenDense(TestCase):
@@ -45,7 +54,7 @@ class TestRewriteChildrenDense(TestCase):
         """Test a simple case of rewriting children."""
         children = [0, 1, 2, 3]
         result = rewrite_children_dense(children, nth_child=1)
-        
+
         self.assertEqual(result.new_child_index, 1)
         # Expected moves: [(0, 0), (2, 2), (3, 3)]
         self.assertEqual(len(result.moves), 3)
@@ -57,7 +66,7 @@ class TestRewriteChildrenDense(TestCase):
         """Test inserting at the beginning of the list."""
         children = [0, 1, 2, 3]
         result = rewrite_children_dense(children, nth_child=0)
-        
+
         self.assertEqual(result.new_child_index, 0)
         # Expected moves: [(0, 1), (1, 2), (2, 3)]
         self.assertEqual(len(result.moves), 3)
@@ -69,7 +78,7 @@ class TestRewriteChildrenDense(TestCase):
         """Test inserting at the end of the list."""
         children = [0, 1, 2, 3]
         result = rewrite_children_dense(children, nth_child=4)
-        
+
         self.assertEqual(result.new_child_index, 4)
         self.assertEqual(len(result.moves), 0)  # No moves needed
 
@@ -77,7 +86,7 @@ class TestRewriteChildrenDense(TestCase):
         """Test with non-contiguous children indices."""
         children = [0, 2, 5, 10]
         result = rewrite_children_dense(children, nth_child=2)
-        
+
         self.assertEqual(result.new_child_index, 2)
         # Expected moves: [(0, 0), (5, 3), (10, 4)]
         self.assertEqual(len(result.moves), 3)
@@ -88,11 +97,13 @@ class TestRewriteChildrenDense(TestCase):
     def test_negative_nth_child(self):
         """Test with a negative nth_child value."""
         children = [0, 1, 2, 3]
-        
+
         with self.assertRaises(AssertionError) as context:
             rewrite_children_dense(children, nth_child=-1)
-        
-        self.assertIn("nth_child must be greater than or equal to 0", str(context.exception))
+
+        self.assertIn(
+            "nth_child must be greater than or equal to 0", str(context.exception)
+        )
 
 
 class TestRewriteChildrenSparse(TestCase):
@@ -102,7 +113,7 @@ class TestRewriteChildrenSparse(TestCase):
         """Test a simple case of sparse rewriting."""
         children = [0, 20, 40, 60]
         result = rewrite_children_sparse(children, nth_child=2, max_value=100)
-        
+
         self.assertEqual(result.new_child_index, 40)
         # With 5 children (4 existing + 1 new) and max_value=100, step should be 20
         # Resulting in positions 0, 20, 40(new), 60, 80
@@ -116,37 +127,45 @@ class TestRewriteChildrenSparse(TestCase):
         """Test sparse rewriting with centering of values."""
         children = [10, 20, 30, 40]
         result = rewrite_children_sparse(children, nth_child=2, max_value=100)
-        
+
         # With 5 children (4 existing + 1 new) and max_value=100, step should be 20
         # Centered positions would be around 10, 30, 50(new), 70, 90
         self.assertEqual(result.new_child_index, 50)
-        
+
         # Moves would be calculated to center the distribution
         self.assertEqual(len(result.moves), 4)
 
     def test_nth_child_out_of_range(self):
         """Test with nth_child greater than max_value."""
         children = [0, 20, 40, 60]
-        
+
         with self.assertRaises(AssertionError) as context:
             rewrite_children_sparse(children, nth_child=101, max_value=100)
-        
-        self.assertIn("nth_child must be less than or equal to max_value", str(context.exception))
+
+        self.assertIn(
+            "nth_child must be less than or equal to max_value", str(context.exception)
+        )
 
     def test_negative_nth_child(self):
         """Test with negative nth_child value."""
         children = [0, 20, 40, 60]
-        
+
         with self.assertRaises(AssertionError) as context:
             rewrite_children_sparse(children, nth_child=-1, max_value=100)
-        
-        self.assertIn("nth_child must be greater than or equal to 0", str(context.exception))
+
+        self.assertIn(
+            "nth_child must be greater than or equal to 0", str(context.exception)
+        )
 
     def test_too_many_children(self):
         """Test with too many children to fit in available space."""
         children = list(range(100))  # 100 children
-        
+
         with self.assertRaises(AssertionError) as context:
-            rewrite_children_sparse(children, nth_child=50, max_value=50)  # Not enough space
-        
-        self.assertIn("Too many children to fit in the available space", str(context.exception))
+            rewrite_children_sparse(
+                children, nth_child=50, max_value=50
+            )  # Not enough space
+
+        self.assertIn(
+            "Too many children to fit in the available space", str(context.exception)
+        )

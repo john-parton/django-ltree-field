@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Any, Literal, Protocol
+from typing import Literal, Protocol
 
-from django.core.exceptions import ValidationError
 from django.contrib.postgres.lookups import ContainedBy, DataContains
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Lookup, Transform
 from django.db.models.lookups import PostgresOperatorLookup

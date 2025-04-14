@@ -29,7 +29,7 @@ class RelativePosition(models.TextChoices):
         tuple = (parent_path, nth-child)
         """
         # Path field is used to unwrap/duck-type models that have a path attribute
-        positions: typing.Dict["RelativePosition", typing.Any] = {}
+        positions: typing.Dict[RelativePosition, typing.Any] = {}
 
         for position in cls:
             try:
@@ -63,18 +63,17 @@ class RelativePosition(models.TextChoices):
         # last_child_of is a more verbose alias for child_of
         if position in {cls.CHILD, cls.LAST_CHILD}:
             return relative_to, None
-        elif position == cls.FIRST_CHILD:
+        if position == cls.FIRST_CHILD:
             return relative_to, 0
-        elif position in {cls.BEFORE, cls.AFTER}:
+        if position in {cls.BEFORE, cls.AFTER}:
             parent, child_index = path_factory.split(relative_to)
 
             if position == cls.AFTER:
                 child_index += 1
 
             return parent, child_index
-        else:
-            # Should never get here
-            raise Exception
+        # Should never get here
+        raise Exception
 
 
 class SortedPosition(models.TextChoices):
@@ -90,7 +89,7 @@ class SortedPosition(models.TextChoices):
         tuple = (parent_path, nth-child)
         """
         # Path field is used to unwrap/duck-type models that have a path attribute
-        positions: typing.Dict["SortedPosition", typing.Any] = {}
+        positions: typing.Dict[SortedPosition, typing.Any] = {}
 
         for position in cls:
             try:
@@ -121,9 +120,8 @@ class SortedPosition(models.TextChoices):
         # last_child_of is a more verbose alias for child_of
         if position == cls.CHILD:
             return relative_to, None
-        elif position == cls.SIBLING:
+        if position == cls.SIBLING:
             parent, child_index = path_factory.split(relative_to)
             return parent, None
-        else:
-            # Should never get here
-            raise Exception
+        # Should never get here
+        raise Exception

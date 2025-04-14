@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import KW_ONLY, dataclass, field
 import itertools as it
 import string
-from collections.abc import Iterable
+from dataclasses import KW_ONLY, dataclass, field
 
 from django.utils.deconstruct import deconstructible
-from functools import reduce
 
 # Postgres 16 and later
 # For example, in C locale, the characters A-Za-z0-9_- are allowed. Labels must be no more than 1000 characters long.

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import itertools as it
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 
 
 def range_excluding(stop: int, *, excluding: int) -> Iterator[int]:
@@ -20,8 +20,11 @@ def range_excluding(stop: int, *, excluding: int) -> Iterator[int]:
     Iterator[int]
         An iterator over the range of integers.
     """
+    if excluding < 0:
+        raise ValueError("Excluding value must be non-negative")
+
     if excluding >= stop:
-        return iter(range(stop))
+        raise ValueError("Excluding value must be less than stop")
 
     if excluding == 0:
         return iter(range(1, stop))
@@ -81,7 +84,6 @@ def rewrite_children_sparse(
     max_value : int
         The maximum value of the children.
     """
-
     if nth_child < 0:
         raise AssertionError("nth_child must be greater than or equal to 0")
 

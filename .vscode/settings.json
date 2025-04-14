@@ -7,9 +7,6 @@
         "editor.formatOnSave": true,
     },
     "ruff.nativeServer": true,
-    "python.analysis.extraPaths": [
-        "/home/john/Code/django-types",
-    ],
     "python.analysis.diagnosticMode": "workspace",
     "python.analysis.typeCheckingMode": "strict",
     "python.analysis.autoImportCompletions": true,

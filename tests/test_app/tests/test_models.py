@@ -8,15 +8,12 @@ Tests for `django_ltree_field` models module.
 from django.contrib.postgres.fields import ArrayField
 from django.db.models import Count, Exists, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Cast
+from django.db.utils import ProgrammingError
 from django.test import TestCase
 
 from django_ltree_field.fields import LTreeField
 from django_ltree_field.functions import Concat, Subpath
-
 from tests.test_app.models import ProtectedNode, SimpleNode
-
-
-from django.db.utils import ProgrammingError
 
 # class TestIntegerNode(TestCase):
 #     def test_create(self):
@@ -56,7 +53,7 @@ class TestCascade(TestCase):
     def test_bulk_move(self):
         SimpleNode.objects.create(path="MoveMe")
         SimpleNode.objects.create(path="MoveMe.Collections")
-        
+
         SimpleNode.objects.filter(
             path="MoveMe",
         ).update(path="MoveMe2")
@@ -73,10 +70,8 @@ class TestCascade(TestCase):
                     "path",
                     flat=True,
                 ),
-            )
+            ),
         )
-
-
 
 
 class TestProtected(TestCase):

@@ -120,7 +120,8 @@ class DatabaseSchemaEditorProtocol(Protocol):
     has the necessary methods to manage ltree triggers.
 
     This is to guard against future changes to Django that might break our
-    schema editor mixin."""
+    schema editor mixin.
+    """
 
     def _alter_field(
         self,

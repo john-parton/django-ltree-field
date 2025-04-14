@@ -1,19 +1,16 @@
 from __future__ import annotations
 
 import abc
-from typing import ClassVar, Iterator, Literal, Self
-from django.db.models import QuerySet
-from django_ltree_field.fields import IntegerLTreeField
-
-from django.db import models
-from django.contrib.postgres.indexes import GistIndex
-
 import enum
-
-from django.db.models import Case, When
-
 import itertools as it
+from collections.abc import Iterator
+from typing import ClassVar, Literal, Self
 
+from django.contrib.postgres.indexes import GistIndex
+from django.db import models
+from django.db.models import When
+
+from django_ltree_field.fields import IntegerLTreeField
 
 type Path = tuple[int, ...]
 
@@ -135,7 +132,6 @@ class SparseStrategy:
         nth_child : int
             The index of the new child.
         """
-
         object_ids: list[int] = list(
             manager.filter(
                 **{
@@ -151,18 +147,22 @@ class SparseStrategy:
 
         whens: list[When] = []
 
-        def child_to_index(child: int, *, _slot_width=self.max_value / (len(object_ids) + 1)) -> int:
+        def child_to_index(
+            child: int, *, _slot_width=self.max_value / (len(object_ids) + 1)
+        ) -> int:
             return int(manager.get(id=child).path[-1])
 
         slots = self.max_value / (len(object_ids) + 1)
 
-        for i, object_id in zip(range_excluding(len(object_ids), excluding=nth_child), object_ids, strict=True):
+        for i, object_id in zip(
+            range_excluding(len(object_ids), excluding=nth_child),
+            object_ids,
+            strict=True,
+        ):
             whens.append(When(id=object_id, then=Value(round(slots * i))))
 
 
 class DenseStrategy:
-    pass
-
     def choose_path(
         self,
         path_lower: tuple[int, ...],
@@ -223,7 +223,6 @@ class AbstractAutoNode(models.Model):
         cls, position: After | Before | LastChildOf | FirstChildOf | Root
     ) -> None:
         """Claim a path for a new node or move an existing node."""
-
         match position:
             case After(rel_obj):
                 path_clone = tuple(*rel_obj.path[:-1], rel_obj.path[-1] + 1)
@@ -246,15 +245,12 @@ class AbstractAutoNode(models.Model):
 
     def find_path(self, **kwargs):
         """Find a range of absolute paths based on relative position."""
-        pass
 
     def open_path(self, **kwargs):
         """Open a path to a target node."""
-        pass
 
     def move(self, **kwargs):
         """Move a node to a new location."""
-        pass
 
     def move(
         self,

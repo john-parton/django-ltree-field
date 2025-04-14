@@ -17,6 +17,8 @@ from django_ltree_field.functions import Concat, Subpath
 from tests.test_app.models import ProtectedNode, SimpleNode
 
 
+from django.db.utils import ProgrammingError
+
 # class TestIntegerNode(TestCase):
 #     def test_create(self):
 #         IntegerNode.objects.create(path=(100, 200, 300))
@@ -28,7 +30,7 @@ class TestCascade(TestCase):
     # with self.assertRaises(ValueError):
     #     SimpleNode.objects.create(path="fjkdlsdfjkl.sdf.fsdsdf")
     def test_cascade_create(self):
-        with self.assertRaises(InternalError):
+        with self.assertRaises(ProgrammingError):
             ProtectedNode.objects.create(path="Top.Unrooted.Deep.Down")
 
     def test_cascade_delete(self):
@@ -64,7 +66,7 @@ class TestCascade(TestCase):
 
 class TestProtected(TestCase):
     def test_protected_create(self):
-        with self.assertRaises(InternalError):
+        with self.assertRaises(ProgrammingError):
             ProtectedNode.objects.create(path="Top.Unrooted.Deep.Down")
 
     def test_protected_delete(self):
@@ -73,7 +75,7 @@ class TestProtected(TestCase):
 
         self.assertTrue(ProtectedNode.objects.filter(path="Top.Collections").exists())
 
-        with self.assertRaises(InternalError):
+        with self.assertRaises(ProgrammingError):
             ProtectedNode.objects.filter(path="Top").delete()
 
     def test_protected_update(self):
@@ -82,7 +84,7 @@ class TestProtected(TestCase):
 
         self.assertTrue(ProtectedNode.objects.filter(path="Top.Collections").exists())
 
-        with self.assertRaises(InternalError):
+        with self.assertRaises(ProgrammingError):
             ProtectedNode.objects.filter(path="Top").update(path="Top2")
 
 

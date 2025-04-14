@@ -156,7 +156,7 @@ class SparseStrategy:
 
         slots = self.max_value / (len(object_ids) + 1)
 
-        for i, object_id in zip(range_excluding(len(object_ids), excluding=nth_child), object_ids, strict=True)
+        for i, object_id in zip(range_excluding(len(object_ids), excluding=nth_child), object_ids, strict=True):
             whens.append(When(id=object_id, then=Value(round(slots * i))))
 
 

@@ -8,7 +8,6 @@ Tests for `django_ltree_field` models module.
 from django.contrib.postgres.fields import ArrayField
 from django.db.models import Count, Exists, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Cast
-from django.db.utils import InternalError
 from django.test import TestCase
 
 from django_ltree_field.fields import LTreeField
@@ -55,13 +54,29 @@ class TestCascade(TestCase):
         self.assertTrue(SimpleNode.objects.filter(path="Top2.Collections").exists())
 
     def test_bulk_move(self):
-        # Example to move all matching nodes to be children of a new nodeIs j
-        SimpleNode.objects.update(
-            path=Concat(
-                Value("Top2"),
-                Subpath("path", Value(1)),
+        SimpleNode.objects.create(path="MoveMe")
+        SimpleNode.objects.create(path="MoveMe.Collections")
+        
+        SimpleNode.objects.filter(
+            path="MoveMe",
+        ).update(path="MoveMe2")
+
+        self.assertSequenceEqual(
+            [
+                "MoveMe2",
+                "MoveMe2.Collections",
+            ],
+            list(
+                SimpleNode.objects.filter(
+                    path__contained_by="MoveMe2",
+                ).values_list(
+                    "path",
+                    flat=True,
+                ),
             )
         )
+
+
 
 
 class TestProtected(TestCase):

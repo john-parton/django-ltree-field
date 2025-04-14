@@ -280,7 +280,7 @@ def _add_ltree_triggers(
     schema_editor.execute(
         f"""
         CREATE TRIGGER {meta['trigger_name']}
-            BEFORE DELETE OR INSERT OR UPDATE OF {meta['column_name']}
+            AFTER DELETE OR INSERT OR UPDATE OF {meta['column_name']}
             ON {meta['table_name']}
             FOR EACH ROW
             EXECUTE PROCEDURE {meta['function_name']}();

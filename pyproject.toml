@@ -23,9 +23,9 @@ convention = "numpy"
 
 [tool.uv]
 dev-dependencies = [
-    "pytest-django>=4.9.0",
-    "pytest>=8.3.3",
-    "ruff>=0.6.8",
+    "pytest-django>=4.11.1",
+    "pytest>=8.3.5",
+    "ruff>=0.11.5",
 ]
 
 [tool.pytest.ini_options]

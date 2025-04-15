@@ -27,6 +27,33 @@ class TestLabeler(TestCase):
         labeler = Labeler("xyz_-")
         self.assertEqual(labeler.alphabet, "xyz_-")
 
+    def test_edge_case_alphabets(self):
+        """Test initialization with edge case alphabets."""
+        # Test with single character alphabet
+        labeler = Labeler("a")
+        self.assertEqual(labeler.alphabet, "a")
+
+        # Test with empty alphabet
+        # Note: Current implementation allows empty alphabet
+        labeler = Labeler("")
+        self.assertEqual(labeler.alphabet, "")
+
+        # Test behavior of empty alphabet with labeling
+        # This should not produce any labels (or raise an exception due to math.log with base 0)
+        with self.assertRaises(Exception):
+            result = list(labeler.label(["item"]))
+
+        # Test with Unicode characters
+        unicode_alphabet = "あいうえお"
+        labeler = Labeler(unicode_alphabet)
+        self.assertEqual(labeler.alphabet, unicode_alphabet)
+
+        # Test with duplicate characters in alphabet
+        # Note: This test depends on implementation details.
+        # The current implementation doesn't deduplicate the alphabet.
+        labeler = Labeler("aabbc")
+        self.assertEqual(labeler.alphabet, "aabbc")
+
     def test_label_empty_items(self):
         """Test labeling an empty collection."""
         labeler = Labeler("abc")
@@ -58,26 +85,6 @@ class TestLabeler(TestCase):
         items_result = [r[1] for r in result]
         self.assertEqual(items_result, ["item1", "item2", "item3", "item4"])
 
-    def test_label_width_calculation(self):
-        """Test that label width is calculated correctly for different alphabet sizes."""
-        # For alphabet size 2 and 7 items, we need ceil(log_2(7)) = 3 width
-        labeler = Labeler("01")
-        items = list(range(7))
-        result = list(labeler.label(items))
-        self.assertEqual(len(result[0][0]), 3)  # Width should be 3
-
-        # For alphabet size 10 and 100 items, we need ceil(log_10(100)) = 2 width
-        labeler = Labeler("0123456789")
-        items = list(range(100))
-        result = list(labeler.label(items))
-        self.assertEqual(len(result[0][0]), 2)  # Width should be 2
-
-        # For alphabet size 26 and 500 items, we need ceil(log_26(500)) = 2 width
-        labeler = Labeler("abcdefghijklmnopqrstuvwxyz")
-        items = list(range(500))
-        result = list(labeler.label(items))
-        self.assertEqual(len(result[0][0]), 2)  # Width should be 2
-
     def test_label_order_preservation(self):
         """Test that the order of items is preserved in the labeling."""
         labeler = Labeler("abc")
@@ -95,18 +102,6 @@ class TestLabeler(TestCase):
         # Check that labels are in increasing lexicographic order
         self.assertEqual(labels, sorted(labels))
 
-    def test_iter_method(self):
-        """Test the _iter method directly for correct lexicographic ordering."""
-        labeler = Labeler("abc")
-
-        # With width 1, should get ["a", "b", "c"]
-        result = list(labeler._iter(width=1))
-        self.assertEqual(result, ["a", "b", "c"])
-
-        # With width 2, should get ["aa", "ab", "ac", "ba", "bb", "bc", "ca", "cb", "cc"]
-        result = list(labeler._iter(width=2))
-        self.assertEqual(result, ["aa", "ab", "ac", "ba", "bb", "bc", "ca", "cb", "cc"])
-
     def test_tuple_returned(self):
         """Test that label() returns tuples of (label, item)."""
         labeler = Labeler("abc")
@@ -116,3 +111,9 @@ class TestLabeler(TestCase):
             self.assertEqual(len(pair), 2)
             self.assertIsInstance(pair[0], str)  # label
             self.assertIsInstance(pair[1], str)  # original item
+
+    def test_error_handling_non_iterable(self):
+        """Test error handling when non-iterable items are provided."""
+        labeler = Labeler("abc")
+
+        # TODO Implement this

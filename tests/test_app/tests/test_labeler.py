@@ -184,7 +184,7 @@ class TestLabeler(unittest.TestCase):
 
         # Create a list-like object with __len__ but without generating all items
         class SizedIterable:
-            def __init__(self, size):
+            def __init__(self, size: int):
                 self.size = size
 
             def __contains__(self, item):
@@ -195,7 +195,7 @@ class TestLabeler(unittest.TestCase):
 
             def __iter__(self):
                 # We won't be iterating through all items, just checking the label width
-                return iter([None] * min(10, self.size))
+                return it.repeat(None, self.size)
 
         items = SizedIterable(items_count)
 

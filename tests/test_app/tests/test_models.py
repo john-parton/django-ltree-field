@@ -18,10 +18,12 @@ from tests.test_app.models import ProtectedNode, SimpleNode
 
 class TestCascade(TestCase):
     def test_forbid_unrooted(self):
+        """Test that unrooted paths are forbidden in SimpleNode."""
         with self.assertRaises(InternalError):
             SimpleNode.objects.create(path="Top.Unrooted.Deep.Down")
 
     def test_cascade_delete(self):
+        """Test that deleting a node cascades to all of its descendants."""
         SimpleNode.objects.create(path="Top")
         SimpleNode.objects.create(path="Top.Collections")
 
@@ -32,6 +34,7 @@ class TestCascade(TestCase):
         self.assertFalse(SimpleNode.objects.filter(path="Top.Collections").exists())
 
     def test_cascade_update(self):
+        """Test that updating a node's path cascades to all of its descendants."""
         SimpleNode.objects.create(path="Top")
         SimpleNode.objects.create(path="Top.Collections")
 
@@ -43,6 +46,7 @@ class TestCascade(TestCase):
         self.assertTrue(SimpleNode.objects.filter(path="Top2.Collections").exists())
 
     def test_bulk_move(self):
+        """Test that bulk moving nodes works correctly with cascading updates."""
         SimpleNode.objects.create(path="MoveMe")
         SimpleNode.objects.create(path="MoveMe.Collections")
 
@@ -68,10 +72,12 @@ class TestCascade(TestCase):
 
 class TestProtected(TestCase):
     def test_protected_create(self):
+        """Test that unrooted paths are forbidden in ProtectedNode."""
         with self.assertRaises(InternalError):
             ProtectedNode.objects.create(path="Top.Unrooted.Deep.Down")
 
     def test_protected_delete(self):
+        """Test that deleting a node with children raises an error in ProtectedNode."""
         ProtectedNode.objects.create(path="Top")
         ProtectedNode.objects.create(path="Top.Collections")
 
@@ -81,6 +87,7 @@ class TestProtected(TestCase):
             ProtectedNode.objects.filter(path="Top").delete()
 
     def test_protected_update(self):
+        """Test that updating a node with children raises an error in ProtectedNode."""
         ProtectedNode.objects.create(path="Top")
         ProtectedNode.objects.create(path="Top.Collections")
 
@@ -92,7 +99,6 @@ class TestProtected(TestCase):
 
 class TestSimpleNode(TestCase):
     # TODO
-    # test_parent_of
     # test_index
     # test_slice
     # test_lca (both array args and variadic args)
@@ -119,7 +125,24 @@ class TestSimpleNode(TestCase):
             ]
         )
 
+    def test_parent_of(self):
+        """Test parent_of lookup that finds direct parent nodes."""
+        self.assertSequenceEqual(
+            [
+                "Top.Collections.Pictures",
+            ],
+            list(
+                SimpleNode.objects.filter(
+                    path__parent_of="Top.Collections.Pictures.Astronomy",
+                ).values_list(
+                    "path",
+                    flat=True,
+                ),
+            ),
+        )
+
     def test_depth(self):
+        """Test depth lookup and transformer functionality."""
         # Make sure lookup works
         self.assertSequenceEqual(
             [
@@ -149,6 +172,7 @@ class TestSimpleNode(TestCase):
         )
 
     def test_sibling_of(self):
+        """Test sibling_of lookup that finds sibling nodes."""
         self.assertSequenceEqual(
             [
                 "Top.Collections",
@@ -166,6 +190,7 @@ class TestSimpleNode(TestCase):
         )
 
     def test_child_of(self):
+        """Test child_of lookup that finds direct child nodes."""
         self.assertSequenceEqual(
             [
                 "Top.Collections",
@@ -183,6 +208,7 @@ class TestSimpleNode(TestCase):
         )
 
     def test_contains(self):
+        """Test contains lookup that finds nodes containing a given path."""
         self.assertSequenceEqual(
             [
                 "Top",
@@ -204,6 +230,7 @@ class TestSimpleNode(TestCase):
 
     # The postgres docs call this "inheritance", but we usually call it "is_descendant"
     def test_contained_by(self):
+        """Test contained_by lookup that finds nodes contained by a given path."""
         self.assertSequenceEqual(
             [
                 "Top.Science",
@@ -222,6 +249,7 @@ class TestSimpleNode(TestCase):
         )
 
     def test_contained_by_list(self):
+        """Test contained_by lookup with a list of paths."""
         self.assertSequenceEqual(
             [
                 "Top.Collections.Pictures.Astronomy",
@@ -252,6 +280,7 @@ class TestSimpleNode(TestCase):
         )
 
     def test_strictly_contained_by(self):
+        """Test strictly contained_by lookup that excludes the given path itself."""
         # We could have this as a custom lookup, but django doesn't tend to provide
         # these in the core library
         self.assertSequenceEqual(
@@ -271,6 +300,7 @@ class TestSimpleNode(TestCase):
         )
 
     def test_pattern_matching(self):
+        """Test pattern matching lookup that finds nodes matching a given pattern."""
         self.assertSequenceEqual(
             [
                 "Top.Collections.Pictures.Astronomy",
@@ -308,6 +338,7 @@ class TestSimpleNode(TestCase):
         )
 
     def test_search(self):
+        """Test search lookup that finds nodes matching a given search query."""
         self.assertSequenceEqual(
             [
                 "Top.Hobbies.Amateurs_Astronomy",
@@ -343,6 +374,7 @@ class TestSimpleNode(TestCase):
 
     # Also tests out our Concat and Subpath functions
     def test_path_construction(self):
+        """Test path construction using Concat and Subpath functions."""
         queryset = SimpleNode.objects.annotate(
             # Inserts "Space" as the 3rd level path
             new_path=Concat(
@@ -369,6 +401,7 @@ class TestSimpleNode(TestCase):
         )
 
     def test_num_children(self):
+        """Test counting the number of children of each node in one query."""
         # Efficiently count the number of children of each node in one query
         qs = (
             SimpleNode.objects.annotate(
@@ -405,6 +438,7 @@ class TestSimpleNode(TestCase):
         )
 
     def test_is_leaf(self):
+        """Test identifying leaf nodes (nodes without children)."""
         qs = SimpleNode.objects.filter(
             ~Exists(
                 SimpleNode.objects.filter(
@@ -434,5 +468,39 @@ class TestSimpleNode(TestCase):
             ),
         )
 
-    def tearDown(self):
-        pass
+    def test_index(self):
+        """Test index functionality for accessing path components by index."""
+        # Get the 3rd element (0-indexed) from the path
+        self.assertEqual(
+            SimpleNode.objects.filter(
+                path="Top.Collections.Pictures.Astronomy",
+            ).values_list(
+                "path__3",
+                flat=True,
+            )[0],
+            "Astronomy",
+        )
+
+        # Get the 0th element (first) from all paths
+        self.assertSequenceEqual(
+            ["Top"] * SimpleNode.objects.count(),
+            list(
+                SimpleNode.objects.values_list(
+                    "path__0",
+                    flat=True,
+                ),
+            ),
+        )
+
+    def test_slice(self):
+        """Test slice functionality for accessing path component ranges."""
+        # Get a slice from index 1 to 3 (exclusive)
+        self.assertEqual(
+            SimpleNode.objects.filter(
+                path="Top.Collections.Pictures.Astronomy",
+            ).values_list(
+                "path__1_3",
+                flat=True,
+            )[0],
+            "Collections.Pictures",
+        )

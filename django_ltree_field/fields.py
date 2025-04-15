@@ -85,9 +85,9 @@ class LTreeField(models.Field):
 
         # Bind the indices as appropriate
         if len(indices) == 1:
-            return partial(IndexTransform, *indices, output_field=type(self))
+            return partial(IndexTransform, index=indices[0])
         if len(indices) == 2:
-            return partial(SliceTransform, *indices, output_field=type(self))
+            return partial(SliceTransform, start=indices[0], end=indices[1])
 
         return None
 
@@ -160,8 +160,10 @@ class DepthTransform(Transform):
 
 
 class IndexTransform(Transform):
-    def __init__(self, index: int):
-        super().__init__()
+    output_field = LTreeField()
+
+    def __init__(self, *args, index: int, **kwargs):
+        super().__init__(*args, **kwargs)
         self.index = index
 
     def as_sql(self, compiler, connection):  # noqa: ARG002
@@ -170,8 +172,10 @@ class IndexTransform(Transform):
 
 
 class SliceTransform(Transform):
-    def __init__(self, start: int, end: int):
-        super().__init__()
+    output_field = LTreeField()
+
+    def __init__(self, *args, start: int, end: int, **kwargs):
+        super().__init__(*args, **kwargs)
         self.start = start
         self.end = end
 

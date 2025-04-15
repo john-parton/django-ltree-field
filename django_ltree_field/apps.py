@@ -13,6 +13,7 @@ def patch_schema_editor() -> None:
     """Patch the schema editor to allow for triggers to be for fields."""
     for config in settings.DATABASES.values():
         backend = load_backend(config["ENGINE"])
+
         schema_editor_class = backend.DatabaseWrapper.SchemaEditorClass
 
         if (

@@ -6,28 +6,20 @@ Tests for `django_ltree_field` models module.
 """
 
 from django.contrib.postgres.fields import ArrayField
+from django.db import InternalError
 from django.db.models import Count, Exists, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Cast
-from django.db.utils import ProgrammingError
 from django.test import TestCase
 
 from django_ltree_field.fields import LTreeField
 from django_ltree_field.functions import Concat, Subpath
 from tests.test_app.models import ProtectedNode, SimpleNode
 
-# class TestIntegerNode(TestCase):
-#     def test_create(self):
-#         IntegerNode.objects.create(path=(100, 200, 300))
-#         assert False, IntegerNode.objects.all().values("path")
-
 
 class TestCascade(TestCase):
-    # def test_forbid_unrooted(self):
-    # with self.assertRaises(ValueError):
-    #     SimpleNode.objects.create(path="fjkdlsdfjkl.sdf.fsdsdf")
-    def test_cascade_create(self):
-        with self.assertRaises(ProgrammingError):
-            ProtectedNode.objects.create(path="Top.Unrooted.Deep.Down")
+    def test_forbid_unrooted(self):
+        with self.assertRaises(InternalError):
+            SimpleNode.objects.create(path="Top.Unrooted.Deep.Down")
 
     def test_cascade_delete(self):
         SimpleNode.objects.create(path="Top")
@@ -76,7 +68,7 @@ class TestCascade(TestCase):
 
 class TestProtected(TestCase):
     def test_protected_create(self):
-        with self.assertRaises(ProgrammingError):
+        with self.assertRaises(InternalError):
             ProtectedNode.objects.create(path="Top.Unrooted.Deep.Down")
 
     def test_protected_delete(self):
@@ -85,7 +77,7 @@ class TestProtected(TestCase):
 
         self.assertTrue(ProtectedNode.objects.filter(path="Top.Collections").exists())
 
-        with self.assertRaises(ProgrammingError):
+        with self.assertRaises(InternalError):
             ProtectedNode.objects.filter(path="Top").delete()
 
     def test_protected_update(self):
@@ -94,7 +86,7 @@ class TestProtected(TestCase):
 
         self.assertTrue(ProtectedNode.objects.filter(path="Top.Collections").exists())
 
-        with self.assertRaises(ProgrammingError):
+        with self.assertRaises(InternalError):
             ProtectedNode.objects.filter(path="Top").update(path="Top2")
 
 
@@ -108,23 +100,24 @@ class TestSimpleNode(TestCase):
 
     def setUp(self):
         # Bulk create the example fixture
-        PATHS = [
-            "Top",
-            "Top.Collections",
-            "Top.Collections.Pictures",
-            "Top.Collections.Pictures.Astronomy",
-            "Top.Collections.Pictures.Astronomy.Astronauts",
-            "Top.Collections.Pictures.Astronomy.Galaxies",
-            "Top.Collections.Pictures.Astronomy.Stars",
-            "Top.Hobbies",
-            "Top.Hobbies.Amateurs_Astronomy",
-            "Top.Science",
-            "Top.Science.Astronomy",
-            "Top.Science.Astronomy.Astrophysics",
-            "Top.Science.Astronomy.Cosmology",
-        ]
-
-        SimpleNode.objects.bulk_create(SimpleNode(path=path) for path in PATHS)
+        SimpleNode.objects.bulk_create(
+            SimpleNode(path=path)
+            for path in [
+                "Top",
+                "Top.Collections",
+                "Top.Collections.Pictures",
+                "Top.Collections.Pictures.Astronomy",
+                "Top.Collections.Pictures.Astronomy.Astronauts",
+                "Top.Collections.Pictures.Astronomy.Galaxies",
+                "Top.Collections.Pictures.Astronomy.Stars",
+                "Top.Hobbies",
+                "Top.Hobbies.Amateurs_Astronomy",
+                "Top.Science",
+                "Top.Science.Astronomy",
+                "Top.Science.Astronomy.Astrophysics",
+                "Top.Science.Astronomy.Cosmology",
+            ]
+        )
 
     def test_depth(self):
         # Make sure lookup works

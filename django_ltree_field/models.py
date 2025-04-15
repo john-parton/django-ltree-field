@@ -3,9 +3,7 @@ from __future__ import annotations
 import string
 from dataclasses import dataclass
 from typing import (
-    TYPE_CHECKING,
     ClassVar,
-    Protocol,
     Self,
     TypedDict,
     assert_never,
@@ -18,40 +16,7 @@ from django.db.models import Case, Expression, F, Q, Value, When
 from django_ltree_field.fields import LTreeField
 
 from .labeler import Labeler
-
-
-class _NodeProtocol(Protocol):
-    path: str
-
-
-class _BaseRelativePosition: ...
-
-
-class Root(_BaseRelativePosition):
-    pass
-
-
-@dataclass
-class FirstChildOf(_BaseRelativePosition):
-    rel_obj: _NodeProtocol
-
-
-@dataclass
-class LastChildOf(_BaseRelativePosition):
-    rel_obj: _NodeProtocol
-
-
-@dataclass
-class Before(_BaseRelativePosition):
-    rel_obj: _NodeProtocol
-
-
-@dataclass
-class After(_BaseRelativePosition):
-    rel_obj: _NodeProtocol
-
-
-type RelativePosition = Root | FirstChildOf | LastChildOf | Before | After
+from .position import After, Before, FirstChildOf, LastChildOf, RelativePosition, Root
 
 
 @dataclass

@@ -18,7 +18,7 @@ class Labeler:
     def __init__(self, alphabet: str):
         self.alphabet = alphabet
 
-    def label[T](self, items: Collection[T]) -> zip[tuple[str, T]]:
+    def label[T](self, items: Collection[T]) -> Iterator[tuple[str, T]]:
         """Generate fixed width labels for items.
 
         The labels are generated in lexicographical order based on the provided
@@ -35,6 +35,9 @@ class Labeler:
         Iterator[tuple[T, str]]
             An iterator over tuples of items and their corresponding labels.
         """
+        if not items:
+            return iter([])
+
         # Get required width
         width = math.ceil(math.log(len(items), len(self.alphabet)))
 

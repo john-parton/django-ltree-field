@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools as it
 import math
-from collections.abc import Collection
+from collections.abc import Collection, Hashable, Iterable
 from typing import (
     TYPE_CHECKING,
 )
@@ -11,14 +11,28 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
+def _is_uniq[T: Hashable](iterable: Iterable[T]) -> bool:
+    seen = set[T]()
+
+    for item in iterable:
+        if item in seen:
+            return False
+        seen.add(item)
+    return True
+
+
 class Labeler:
     """Fixed width lexicographical string generator."""
 
     alphabet: str
 
     def __init__(self, alphabet: str):
-        if not alphabet:
-            msg = "Alphabet must contain at least 1 character."
+        if len(alphabet) < 2:
+            msg = "Alphabet must contain at least 2 characters."
+            raise ValueError(msg)
+
+        if not _is_uniq(alphabet):
+            msg = "Alphabet must contain unique characters."
             raise ValueError(msg)
 
         self.alphabet = alphabet

@@ -5,6 +5,7 @@ This module tests the Labeler class which is used for generating fixed-width
 lexicographical labels for collections of items.
 """
 
+import itertools as it
 import unittest
 from typing import Any, Never
 
@@ -30,25 +31,18 @@ class TestLabeler(unittest.TestCase):
 
     def test_edge_case_alphabets(self):
         """Test initialization with edge case alphabets."""
-        # Test with single character alphabet
-        labeler = Labeler("a")
-        self.assertEqual(labeler.alphabet, "a")
-
-        # Test with empty alphabet
-        # Note: Current implementation allows empty alphabet
-        with self.assertRaises(ValueError):
-            labeler = Labeler("")
-
         # Test with Unicode characters
         unicode_alphabet = "あいうえお"
         labeler = Labeler(unicode_alphabet)
         self.assertEqual(labeler.alphabet, unicode_alphabet)
 
         # Test with duplicate characters in alphabet
-        # Note: This test depends on implementation details.
-        # The current implementation doesn't deduplicate the alphabet.
-        labeler = Labeler("aabbc")
-        self.assertEqual(labeler.alphabet, "aabbc")
+        with self.assertRaises(ValueError) as context:
+            Labeler("aabbc")
+
+        self.assertEqual(
+            str(context.exception), "Alphabet must contain unique characters."
+        )
 
     def test_label_empty_items(self):
         """Test labeling an empty collection."""
@@ -178,3 +172,110 @@ class TestLabeler(unittest.TestCase):
         labels = [r[0] for r in result]
         expected_labels = ["000", "001", "010", "011", "100", "101", "110", "111"]
         self.assertEqual(sorted(labels), expected_labels)
+
+    def test_width_minimum_one(self):
+        """Test that width is at least 1 even when mathematically it could be 0."""
+        # With alphabet size 10 and only 1 item, log_10(1) = 0,
+        # but the implementation should use width=1 as minimum
+        labeler = Labeler("0123456789")
+        items = ["single_item"]
+        result = list(labeler.label(items))
+        self.assertEqual(len(result[0][0]), 1)  # Width should be at least 1
+
+    def test_very_large_item_count(self):
+        """Test width calculation with a large number of items."""
+        # This test validates the width calculation formula with a large collection
+        # Without generating all the labels (which would be inefficient)
+        labeler = Labeler("01")  # Binary alphabet
+
+        # Create a collection large enough to require a width of exactly 20
+        items_count = 2**20
+
+        # Create a list-like object with __len__ but without generating all items
+        class SizedIterable:
+            def __init__(self, size):
+                self.size = size
+
+            def __contains__(self, item):
+                return item is None
+
+            def __len__(self):
+                return self.size
+
+            def __iter__(self):
+                # We won't be iterating through all items, just checking the label width
+                return iter([None] * min(10, self.size))
+
+        items = SizedIterable(items_count)
+
+        # Get just the first few labels to check the width
+        result = list(it.islice(labeler.label(items), 5))
+
+        # Check that the width is correct (should be 20 for > 2^19 items with binary alphabet)
+        self.assertEqual(len(result[0][0]), 20)
+
+    def test_error_messages_short_alphabet(self):
+        """Test that an appropriate error message is raised for short alphabets."""
+        with self.assertRaises(ValueError) as context:
+            Labeler("")
+
+        self.assertEqual(
+            str(context.exception), "Alphabet must contain at least 2 characters."
+        )
+
+        with self.assertRaises(ValueError) as context:
+            Labeler("a")
+
+        self.assertEqual(
+            str(context.exception), "Alphabet must contain at least 2 characters."
+        )
+
+    def test_non_collection_error_message(self):
+        """Test specific error message for non-collection input."""
+        labeler = Labeler("abc")
+
+        # Test with various non-collection types
+        non_collections = [
+            42,  # int
+            3.14,  # float
+            True,  # bool
+            lambda x: x,  # function
+        ]
+
+        for item in non_collections:
+            with self.assertRaises(TypeError) as context:
+                list(labeler.label(item))  # pyright: ignore[reportArgumentType]
+
+            expected_msg = f"Expected Collection, got {type(item).__name__}"
+            self.assertEqual(str(context.exception), expected_msg)
+
+    def test_parametrized_width_calculation(self):
+        """Test width calculation with different alphabet sizes and item counts."""
+        test_cases = [
+            # (alphabet, num_items, expected_width)
+            ("01", 1, 1),  # Minimum width is 1
+            ("01", 2, 1),  # log_2(2) = 1
+            ("01", 3, 2),  # log_2(3) ≈ 1.58, ceil = 2
+            ("01", 4, 2),  # log_2(4) = 2
+            ("01", 5, 3),  # log_2(5) ≈ 2.32, ceil = 3
+            ("0123", 5, 2),  # log_4(5) ≈ 1.16, ceil = 2
+            ("0123", 16, 2),  # log_4(16) = 2
+            ("0123", 17, 3),  # log_4(17) ≈ 2.04, ceil = 3
+            ("0123456789", 10, 1),  # log_10(10) = 1
+            ("0123456789", 11, 2),  # log_10(11) ≈ 1.04, ceil = 2
+        ]
+
+        for alphabet, num_items, expected_width in test_cases:
+            with self.subTest(alphabet=alphabet, num_items=num_items):
+                labeler = Labeler(alphabet)
+                items = list(range(num_items))
+                result = list(labeler.label(items))
+
+                if result:  # If any results were produced
+                    actual_width = len(result[0][0])
+                    self.assertEqual(
+                        actual_width,
+                        expected_width,
+                        f"For alphabet size {len(alphabet)} and {num_items} items, "
+                        f"expected width {expected_width} but got {actual_width}",
+                    )

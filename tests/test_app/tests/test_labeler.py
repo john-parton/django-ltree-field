@@ -35,13 +35,8 @@ class TestLabeler(TestCase):
 
         # Test with empty alphabet
         # Note: Current implementation allows empty alphabet
-        labeler = Labeler("")
-        self.assertEqual(labeler.alphabet, "")
-
-        # Test behavior of empty alphabet with labeling
-        # This should not produce any labels (or raise an exception due to math.log with base 0)
-        with self.assertRaises(Exception):
-            result = list(labeler.label(["item"]))
+        with self.assertRaises(ValueError):
+            labeler = Labeler("")
 
         # Test with Unicode characters
         unicode_alphabet = "あいうえお"

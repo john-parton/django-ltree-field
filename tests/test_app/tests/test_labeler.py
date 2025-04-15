@@ -234,16 +234,17 @@ class TestLabeler(unittest.TestCase):
         ]
 
         for item in non_collections:
-            with self.assertRaises(TypeError) as context:
-                list(labeler.label(item))  # pyright: ignore[reportArgumentType]
+            with self.subTest(non_collection=item):
+                with self.assertRaises(TypeError) as context:
+                    list(labeler.label(item))  # pyright: ignore[reportArgumentType]
 
-            expected_msg = f"Expected Collection, got {type(item).__name__}"
-            self.assertEqual(str(context.exception), expected_msg)
+                expected_msg = f"Expected Collection, got {type(item).__name__}"
+                self.assertEqual(str(context.exception), expected_msg)
 
     def test_parametrized_width_calculation(self):
         """Test width calculation with different alphabet sizes and item counts."""
         test_cases = [
-            # (alphabet, num_items, expected_width)
+            # alphabet, num_items, expected_width)
             ("01", 1, 1),  # Minimum width is 1
             ("01", 2, 1),  # log_2(2) = 1
             ("01", 3, 2),  # log_2(3) ≈ 1.58, ceil = 2

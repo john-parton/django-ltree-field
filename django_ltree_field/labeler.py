@@ -38,13 +38,34 @@ class Labeler:
         if not items:
             return iter([])
 
-        # Get required width
-        width = math.ceil(math.log(len(items), len(self.alphabet)))
-
         return zip(
-            self._iter(width=width),
+            self._iter(
+                width=self._label_width(len(items)),
+            ),
             items,
             strict=False,
+        )
+
+    def _label_width(self, n: int) -> int:
+        """Calculate the width of the labels needed for n items.
+
+        The width is determined by the size of the alphabet and the number
+        of items. The width is calculated using the formula:
+        ceil(log(n, len(alphabet)))
+
+        Parameters
+        ----------
+        n : int
+            The number of items to label.
+
+        Returns
+        -------
+        int
+            The width of the labels needed for n items.
+        """
+        return max(
+            math.ceil(math.log(n, len(self.alphabet))),
+            1,
         )
 
     def _iter(self, *, width: int) -> Iterator[str]:

@@ -1,4 +1,5 @@
-import typing
+from __future__ import annotations
+from typing import Any
 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -24,12 +25,12 @@ class RelativePosition(models.TextChoices):
     @classmethod
     def resolve(
         cls, kwargs, path_field: str, path_factory: PathFactory
-    ) -> typing.Tuple[Path, typing.Optional[int]]:
+    ) -> tuple[Path, int | None]:
         """Parse kwargs and normalize relative position to always be
         tuple = (parent_path, nth-child)
         """
         # Path field is used to unwrap/duck-type models that have a path attribute
-        positions: typing.Dict[RelativePosition, typing.Any] = {}
+        positions: dict[RelativePosition, Any] = {}
 
         for position in cls:
             try:
@@ -38,14 +39,16 @@ class RelativePosition(models.TextChoices):
                 continue
 
         if len(positions) != 1:
-            raise TypeError(f"Could not resolve position: {positions!r}")
+            msg = f"Could not resolve position: {positions!r}"
+            raise TypeError(msg)
 
         position, relative_to = positions.popitem()
 
         if position == cls.ROOT:
             if relative_to is not True:
-                raise ValueError(f"Expected kwarg root=True, got root={relative_to!r}")
-            return [], None
+                msg = f"Expected kwarg root=True, got root={relative_to!r}"
+                raise ValueError(msg)
+            return (), None
 
         # Duck-type model instances
         # Might want to use isinstance instead?
@@ -53,7 +56,8 @@ class RelativePosition(models.TextChoices):
             relative_to = getattr(relative_to, path_field)
 
         if not isinstance(relative_to, tuple):
-            raise TypeError(f"Expected tuple, got {type(relative_to)}")
+            msg = f"Expected tuple, got {type(relative_to)}"
+            raise TypeError(msg)
 
         # TODO Better error handling here?
         # Convert strings to lists?
@@ -84,12 +88,12 @@ class SortedPosition(models.TextChoices):
     @classmethod
     def resolve(
         cls, kwargs, path_field: str, path_factory: PathFactory
-    ) -> typing.Tuple[Path, typing.Optional[int]]:
+    ) -> tuple[Path, int | None]:
         """Parse kwargs and normalize relative position to always be
         tuple = (parent_path, nth-child)
         """
         # Path field is used to unwrap/duck-type models that have a path attribute
-        positions: typing.Dict[SortedPosition, typing.Any] = {}
+        positions: dict[SortedPosition, any] = {}
 
         for position in cls:
             try:

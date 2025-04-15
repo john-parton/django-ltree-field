@@ -1,20 +1,39 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Literal, Protocol
+from typing import Literal
 
 from django.contrib.postgres.lookups import ContainedBy, DataContains
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Lookup, Transform
 from django.db.models.lookups import PostgresOperatorLookup
 from django.utils.translation import gettext_lazy as _
 
 from .constants import LTreeTrigger
-from .integer_paths import default_codec
 
 
 class LTreeField(models.Field):
+    """
+    A field for PostgreSQL ltree data type, representing a label path.
+
+    This field is used to store hierarchical data in a tree-like structure.
+
+    Attributes
+    ----------
+    triggers : LTreeTrigger, optional
+        Specifies the behavior for database triggers when modifying the tree structure.
+        The `triggers` argument can be set to one of the following:
+
+        - `LTreeField.PROTECT`: Prevent deletion of nodes with children.
+        - `LTreeField.CASCADE`: Automatically delete child nodes when a parent is deleted.
+
+        Defaults to `LTreeField.CASCADE`.
+
+    Notes
+    -----
+    The default form widget for this field is a `django.forms.TextInput`.
+    """
+
     # Aliases for users
     PROTECT = LTreeTrigger.PROTECT
     CASCADE = LTreeTrigger.CASCADE
@@ -159,67 +178,3 @@ class SliceTransform(Transform):
     def as_sql(self, compiler, connection):  # noqa: ARG002
         lhs, params = compiler.compile(self.lhs)
         return f"subltree({lhs}, %s, %s)", params + [self.start, self.end]
-
-
-class CodecProtocol(Protocol):
-    max_value: int  # Maybe this should be on the field directly?
-
-    def decode(self, value: str) -> int: ...
-
-    def encode(self, value: int) -> str: ...
-
-
-class IntegerLTreeField(LTreeField):
-    codec: CodecProtocol
-
-    def __init__(
-        self,
-        *args,
-        **kwargs,
-    ):
-        self.codec = kwargs.pop("codec") if "codec" in kwargs else default_codec()
-        super().__init__(*args, **kwargs)
-
-    def deconstruct(self):
-        name, path, args, kwargs = super().deconstruct()
-        kwargs["codec"] = self.codec
-        return name, path, args, kwargs
-
-    def from_db_value(self, value, expression, connection) -> tuple[int, ...] | None:
-        return self.to_python(value)
-
-    def to_python(self, value) -> tuple[int, ...] | None:
-        if value is None:
-            return None
-
-        if isinstance(value, tuple):
-            # Doesn't actually check that values are integers
-            return value
-
-        if not isinstance(value, str):
-            msg = _("Expected string")
-            raise ValidationError(msg)
-
-        return tuple(self.codec.decode(label) for label in value.split("."))
-
-    def get_prep_value(self, value: list[int] | tuple[int] | str | None) -> str | None:
-        if value is None:
-            return None
-
-        if isinstance(value, str):
-            # Just assume the user knows what they're doing
-            return value
-
-        if not isinstance(value, (list, tuple)):
-            msg = _("Expected list or tuple")
-            raise ValidationError(msg)
-
-        for label in value:
-            if not isinstance(label, int):
-                msg = _("Expected integer")
-                raise ValidationError(msg)
-            if label < 0:
-                msg = _("Expected positive integer")
-                raise ValidationError(msg)
-
-        return ".".join(self.codec.encode(label) for label in value)

@@ -1,31 +1,23 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-import itertools as it
-from dataclasses import dataclass
-from django.db.models import Expression
-import math
 import string
+from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     ClassVar,
-    Collection,
     Protocol,
     Self,
     TypedDict,
     assert_never,
-    cast,
 )
 
 from django.contrib.postgres.indexes import GistIndex
 from django.db import models
-from django.db.models import When, Case, F, Value, Q
-from numpy import insert
+from django.db.models import Case, Expression, F, Q, Value, When
 
-from django_ltree_field.fields import IntegerLTreeField, LTreeField
+from django_ltree_field.fields import LTreeField
 
-if TYPE_CHECKING:
-    from collections.abc import Iterator
+from .labeler import Labeler
 
 
 class _NodeProtocol(Protocol):
@@ -60,54 +52,6 @@ class After(_BaseRelativePosition):
 
 
 type RelativePosition = Root | FirstChildOf | LastChildOf | Before | After
-
-
-class Labeler:
-    """Fixed width lexicographical string generator."""
-
-    alphabet: str
-    alphabet_reverse: dict[str, int]
-
-    def __init__(self, alphabet: str):
-        self.alphabet = alphabet
-
-    def label[T](self, items: Collection[T]) -> zip[tuple[str, T]]:
-        """Generates fixed width labels for items such that sorting the labels
-        is equivalent to the given order.
-
-        Parameters
-        ----------
-        items : Iterable[T]
-
-        Yields
-        ------
-        Iterator[tuple[T, str]]
-            An iterator over tuples of items and their corresponding labels.
-        """
-        # Get required width
-        width = math.ceil(math.log(len(items), len(self.alphabet)))
-
-        return zip(
-            self._iter(width=width),
-            items,
-            strict=False,
-        )
-
-    def _iter(self, *, width: int) -> Iterator[str]:
-        """Generate lexicographical combinations of the given width.
-
-        Parameters
-        ----------
-        width : int
-            The width of the combinations to generate.
-
-        Yields
-        ------
-        Iterator[str]
-            An iterator over the lexicographical combinations of the given width.
-        """
-        for chars in it.product(self.alphabet, repeat=width):
-            yield "".join(chars)
 
 
 @dataclass

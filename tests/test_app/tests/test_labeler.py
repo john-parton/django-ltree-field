@@ -103,15 +103,6 @@ class TestLabeler(unittest.TestCase):
             self.assertIsInstance(pair[0], str)  # label
             self.assertIsInstance(pair[1], str)  # original item
 
-    def test_error_handling_non_iterable(self):
-        """Test error handling when non-iterable items are provided."""
-        labeler = Labeler("abc")
-
-        with self.assertRaises(TypeError) as context:
-            list(labeler.label(42))  # pyright: ignore[reportArgumentType, reportUnknownArgumentType]
-
-        self.assertEqual(str(context.exception), "Expected Collection, got int")
-
     def test_width_calculation(self):
         """Test that the correct label width is calculated based on items count and alphabet size."""
         # Test with binary alphabet
@@ -235,7 +226,7 @@ class TestLabeler(unittest.TestCase):
         labeler = Labeler("abc")
 
         # Test with various non-collection types
-        non_collections = [
+        non_collections: list[Any] = [
             42,  # int
             3.14,  # float
             True,  # bool

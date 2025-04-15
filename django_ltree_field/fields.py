@@ -83,13 +83,14 @@ class LTreeField(models.Field):
         except ValueError:
             return None
 
-        # Bind the indices as appropriate
-        if len(indices) == 1:
-            return partial(IndexTransform, index=indices[0])
-        if len(indices) == 2:
-            return partial(SliceTransform, start=indices[0], end=indices[1])
-
-        return None
+        match indices:
+            # Bind the indices as appropriate
+            case [index]:
+                return partial(IndexTransform, index=index)
+            case [start, end]:
+                return partial(SliceTransform, start=start, end=end)
+            case _:
+                return None
 
 
 LTreeField.register_lookup(DataContains)
@@ -168,7 +169,7 @@ class IndexTransform(Transform):
 
     def as_sql(self, compiler, connection):  # noqa: ARG002
         lhs, params = compiler.compile(self.lhs)
-        return f"subltree({lhs}, %s, %s)", params + [self.index, self.index + 1]
+        return f"subpath({lhs}, %s, 1)", params + [self.index]
 
 
 class SliceTransform(Transform):

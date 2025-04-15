@@ -5,12 +5,13 @@ This module tests the Labeler class which is used for generating fixed-width
 lexicographical labels for collections of items.
 """
 
-from django.test import TestCase
+import unittest
+from typing import Any, Never
 
 from django_ltree_field.labeler import Labeler
 
 
-class TestLabeler(TestCase):
+class TestLabeler(unittest.TestCase):
     """Tests for the Labeler class."""
 
     def test_init(self):
@@ -52,7 +53,8 @@ class TestLabeler(TestCase):
     def test_label_empty_items(self):
         """Test labeling an empty collection."""
         labeler = Labeler("abc")
-        result = list(labeler.label([]))
+        items: list[Never] = []
+        result = list(labeler.label(items))
         self.assertEqual(result, [])
 
     def test_label_single_item(self):
@@ -111,4 +113,68 @@ class TestLabeler(TestCase):
         """Test error handling when non-iterable items are provided."""
         labeler = Labeler("abc")
 
-        # TODO Implement this
+        with self.assertRaises(TypeError) as context:
+            list(labeler.label(42))  # pyright: ignore[reportArgumentType, reportUnknownArgumentType]
+
+        self.assertEqual(str(context.exception), "Expected Collection, got int")
+
+    def test_width_calculation(self):
+        """Test that the correct label width is calculated based on items count and alphabet size."""
+        # Test with binary alphabet
+        labeler = Labeler("01")
+
+        # 2 items with alphabet size 2 need width=1
+        items = ["item1", "item2"]
+        result = list(labeler.label(items))
+        self.assertEqual(len(result[0][0]), 1)  # Width should be 1
+
+        # 5 items with alphabet size 2 need width=3
+        # log_2(5) = 2.32, ceil(2.32) = 3
+        items = ["item1", "item2", "item3", "item4", "item5"]
+        result = list(labeler.label(items))
+        self.assertEqual(len(result[0][0]), 3)  # Width should be 3
+
+        # Test with larger alphabet
+        labeler = Labeler("abcdefghij")  # Size 10 alphabet
+
+        # 100 items with alphabet size 10 need width=2
+        # log_10(100) = 2, ceil(2) = 2
+        items = [f"item{i}" for i in range(100)]
+        result = list(labeler.label(items))
+        self.assertEqual(len(result[0][0]), 2)  # Width should be 2
+
+    def test_different_item_types(self):
+        """Test labeling with different item types."""
+        labeler = Labeler("abc")
+
+        # Test with a mix of item types
+        items: list[Any] = [42, "string", True, 3.14, None, [1, 2, 3]]
+        result = list(labeler.label(items))
+
+        self.assertEqual(len(result), 6)
+
+        # Verify items are preserved in result
+        items_result = [r[1] for r in result]
+        self.assertEqual(items_result, items)
+
+        # The width is calculated based on the number of items.
+        # For 6 items with alphabet size 3, we need ceil(log_3(6)) = 2 characters
+        label_width = max(len(label) for label, _ in result)
+        self.assertEqual(label_width, 2)
+
+    def test_exact_power_items(self):
+        """Test with exact power of alphabet size items to verify width calculations."""
+        labeler = Labeler("01")  # Binary alphabet
+
+        # 8 items with binary alphabet (2^3) should produce width=3 labels
+        items = [f"item{i}" for i in range(8)]
+        result = list(labeler.label(items))
+
+        # Verify all labels have width 3
+        for label, _ in result:
+            self.assertEqual(len(label), 3)
+
+        # Check all possible 3-digit binary combinations are included
+        labels = [r[0] for r in result]
+        expected_labels = ["000", "001", "010", "011", "100", "101", "110", "111"]
+        self.assertEqual(sorted(labels), expected_labels)

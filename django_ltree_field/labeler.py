@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import itertools as it
 import math
+from collections.abc import Collection
 from typing import (
     TYPE_CHECKING,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Iterator
+    from collections.abc import Iterator
 
 
 class Labeler:
@@ -39,6 +40,10 @@ class Labeler:
         Iterator[tuple[T, str]]
             An iterator over tuples of items and their corresponding labels.
         """
+        if not isinstance(items, Collection):  # pyright: ignore[reportUnnecessaryIsInstance]
+            msg = f"Expected Collection, got {type(items).__name__}"
+            raise TypeError(msg)
+
         if not items:
             return iter([])
 

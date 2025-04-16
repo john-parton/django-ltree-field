@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from functools import partial
-from typing import Any, Literal
+from typing import Literal
 
 from django.contrib.postgres.lookups import ContainedBy, DataContains
 from django.db import models
-from django.db.models import Lookup, Transform, Value
-from django.db.models.expressions import Func
+from django.db.models import Lookup, Value
 from django.db.models.lookups import PostgresOperatorLookup
 from django.utils.translation import gettext_lazy as _
 

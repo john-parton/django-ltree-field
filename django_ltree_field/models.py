@@ -1,234 +1,24 @@
 from __future__ import annotations
 
-import string
-from dataclasses import dataclass
-from typing import (
-    ClassVar,
-    Self,
-    TypedDict,
-    assert_never,
-)
+from typing import TYPE_CHECKING, ClassVar, Literal, Self, assert_never
 
 from django.contrib.postgres.indexes import GistIndex
 from django.db import models
-from django.db.models import Case, Expression, F, Q, Value, When
 
 from django_ltree_field.fields import LTreeField
 
-from .labeler import Labeler
-from .position import After, Before, FirstChildOf, LastChildOf, RelativePosition, Root
+from .managers import AutoNodeManager
+from .position import RelativePosition, RelativePositionType
 
-
-@dataclass
-class _Update:
-    condition: Q
-    expression: Expression
-
-    def update(self, manager: models.Manager):
-        return manager.filter(self.condition).update(path=self.expression)
-
-    async def aupdate(self, manager: models.Manager):
-        return await manager.filter(self.condition).aupdate(path=self.expression)
-
-    @classmethod
-    def from_data(cls, data: list[tuple[str, str]]) -> Self | None:
-        if not data:
-            return None
-
-        return cls(
-            condition=Q(path__in=[row[0] for row in data]),
-            expression=Case(
-                *(
-                    When(
-                        path=row[0],
-                        then=Value(row[1]),
-                    )
-                    for row in data
-                ),
-                default=F("path"),
-            ),
-        )
-
-
-class _InsertStrategy(TypedDict):
-    update: _Update | None
-    insertion_point: str
-
-
-class AutoNodeManager(models.Manager):
-    _labeler: Labeler
-
-    def __init__(self, *args, **kwargs):
-        self._labeler = Labeler(
-            # Postgres 16+
-            "-" + string.digits + string.ascii_uppercase + "_" + string.ascii_lowercase
-            # Postgres 15 and earlier
-            # string.digits + string.ascii_uppercase + "_" + string.ascii_lowercase
-        )
-        super().__init__(*args, **kwargs)
-
-    def _get_prefix(self, position: RelativePosition) -> str:
-        match position:
-            case After(rel_obj) | Before(rel_obj):
-                stem, __, __ = rel_obj.path.rpartition(".")
-                return f"{stem}."
-            case LastChildOf(rel_obj) | FirstChildOf(rel_obj):
-                return f"{rel_obj.path}."
-            case Root():
-                return ""
-            case _:
-                assert_never(position)
-
-    def _get_paths_to_update(self, position: RelativePosition) -> list[str | None]:
-        match position:
-            case After(rel_obj):
-                paths = list(
-                    self.filter(
-                        path__sibling_of=rel_obj.path,
-                    ).values_list("path", flat=True)
-                )
-
-                # Insert a None sentinel after rel_obj.path
-                i = paths.index(rel_obj.path)
-                paths.insert(i + 1, None)
-                return rel_obj.path.rpartition(".")[0], paths
-            case Before(rel_obj):
-                paths = list(
-                    self.filter(
-                        path__sibling_of=rel_obj.path,
-                    ).values_list("path", flat=True)
-                )
-
-                # Insert a None sentinel before rel_obj.path
-                i = paths.index(rel_obj.path)
-                paths.insert(i, None)
-                return rel_obj.path.rpartition(".")[0], paths
-            case LastChildOf(rel_obj):
-                paths = list(
-                    self.filter(
-                        path__child_of=rel_obj.path,
-                    ).values_list("path", flat=True)
-                )
-
-                # Insert a None sentinel at the end
-                paths.append(None)
-                return paths
-            case FirstChildOf(rel_obj):
-                paths = list(
-                    self.filter(
-                        path__child_of=rel_obj.path,
-                    ).values_list("path", flat=True)
-                )
-
-                # Insert a None sentinel at the beginning
-                paths.insert(0, None)
-                return paths
-            case Root():
-                paths = list(self.filter(path__depth=1).values_list("path", flat=True))
-                # Insert a None sentinel at the beginning
-                paths.insert(0, None)
-                return paths
-            case _:
-                assert_never(position)
-
-    async def _aget_paths_to_update(
-        self, position: RelativePosition
-    ) -> list[str | None]:
-        match position:
-            case After(rel_obj):
-                paths = [
-                    path
-                    async for path in self.filter(
-                        path__sibling_of=rel_obj.path,
-                    ).values_list("path", flat=True)
-                ]
-
-                # Insert a None sentinel after rel_obj.path
-                i = paths.index(rel_obj.path)
-                paths.insert(i + 1, None)
-                return rel_obj.path.rpartition(".")[0], paths
-            case Before(rel_obj):
-                paths = [
-                    path
-                    async for path in self.filter(
-                        path__sibling_of=rel_obj.path,
-                    ).values_list("path", flat=True)
-                ]
-
-                # Insert a None sentinel before rel_obj.path
-                i = paths.index(rel_obj.path)
-                paths.insert(i, None)
-                return rel_obj.path.rpartition(".")[0], paths
-            case LastChildOf(rel_obj):
-                paths = list(
-                    self.filter(
-                        path__child_of=rel_obj.path,
-                    ).values_list("path", flat=True)
-                )
-
-                # Insert a None sentinel at the end
-                paths.append(None)
-                return paths
-            case FirstChildOf(rel_obj):
-                paths = list(
-                    self.filter(
-                        path__child_of=rel_obj.path,
-                    ).values_list("path", flat=True)
-                )
-
-                # Insert a None sentinel at the beginning
-                paths.insert(0, None)
-                return paths
-            case Root():
-                paths = list(self.filter(path__depth=1).values_list("path", flat=True))
-                # Insert a None sentinel at the beginning
-                paths.insert(0, None)
-                return paths
-            case _:
-                assert_never(position)
-
-    def _get_insert_strategy(self, position: RelativePosition) -> _InsertStrategy:
-        paths_to_update = self._get_paths_to_update(position)
-
-        _updates: list[tuple[str, str]] = []
-
-        insertion_point = None
-
-        prefix = self._get_prefix(position)
-
-        for suffix, path in self._labeler.label(paths_to_update):
-            new_path = f"{prefix}{suffix}"
-
-            if path is None:
-                if insertion_point is not None:
-                    raise AssertionError
-                insertion_point = new_path
-                continue
-
-            if new_path != path:
-                _updates.append((path, new_path))
-
-        if insertion_point is None:
-            raise AssertionError
-
-        return {
-            "update": _Update.from_data(
-                _updates,
-            ),
-            "insertion_point": insertion_point,
-        }
-
-    def move_nodes(self, position: RelativePosition):
-        strategy = self._get_insert_strategy(position)
-
-        if strategy["update"] is not None:
-            strategy["update"].update(self)
-
-        return strategy["insertion_point"]
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 
 class AbstractAutoNode(models.Model):
     path = LTreeField(triggers=LTreeField.CASCADE, null=False)
+
+    position = RelativePosition
+    objects = AutoNodeManager()
 
     class Meta:
         abstract = True
@@ -240,67 +30,132 @@ class AbstractAutoNode(models.Model):
         ]
         ordering: ClassVar = ["path"]
 
-    @classmethod
-    def claim_position(
-        cls,
-        position: RelativePosition,
-    ) -> None:
-        """Claim a path for a new node or move an existing node."""
-        match position:
-            case After(rel_obj):
-                parent, __, suffix = rel_obj.path.rpartition(".")
-                insert_point = rel_obj.path[:-1] + (rel_obj.path[-1] + 1,)
-                do_move = True
-            case Before(rel_obj):
-                insert_point = rel_obj.path
-                do_move = True
-            case LastChildOf(rel_obj):
-                path = (
-                    cls.objects.filter(
-                        path__child_of=rel_obj.path,
-                    )
-                    .order_by("-path")
-                    .values_list("path", flat=True)
-                    .first()
-                )
-
-                if path is None:
-                    insert_point = rel_obj.path + (0,)
-                else:
-                    insert_point = rel_obj.path + (path[-1] + 1,)
-                do_move = False
-            case FirstChildOf(rel_obj):
-                insert_point = rel_obj.path + (0,)
-                do_move = True
-            case Root():
-                insert_point = cls.objects.filter(path__depth=1).last()
-                do_move = False
-
-        if do_move:
-            updates: list[Self] = []
-
-            stem = insert_point[:-1]
-            i = insert_point[-1]
-
-            for obj in cls.objects.filter(
-                path__sibling_of=insert_point, path__gt=insert_point
-            ):
-                i += 1
-                new_path = stem + (i,)
-
-                if obj.path != new_path:
-                    obj.path = new_path
-                    updates.append(obj)
-
-            if updates:
-                cls.objects.bulk_update(updates, ["path"])
-
-        return insert_point
-
     def move(
         self,
-        position: RelativePosition,
+        position: RelativePositionType,
     ) -> None:
-        self.path = self.claim_position(position)
+        self.path = self.__class__.objects.move_nodes(
+            position,
+        )
 
-        self.save()
+        self.save(update_fields=["path"])
+
+    async def amove(
+        self,
+        position: RelativePositionType,
+    ) -> None:
+        self.path = await self.__class__.objects.amove_nodes(
+            position,
+        )
+
+        await self.asave(update_fields=["path"])
+
+    def parent(self) -> QuerySet[Self]:
+        """
+        Get the parent of this node.
+
+        Returns
+        -------
+        QuerySet[Self]
+            A queryset of the parent node.
+        """
+        return self.__class__.objects.filter(
+            path__parent_of=self.path,
+        )
+
+    def children(self) -> QuerySet[Self]:
+        """
+        Get the children of this node.
+
+        Returns
+        -------
+        QuerySet[Self]
+            A queryset of child nodes.
+        """
+        return self.__class__.objects.filter(
+            path__child_of=self.path,
+        )
+
+    def descendants(self) -> QuerySet[Self]:
+        """
+        Get the descendants of this node.
+
+        Returns
+        -------
+        QuerySet[Self]
+            A queryset of descendant nodes.
+        """
+        return self.__class__.objects.filter(
+            path__contained_by=self.path,
+        ).exclude(
+            path=self.path,
+        )
+
+    # Similar to treebeard's API
+
+    @classmethod
+    def add_root(cls, **kwargs):
+        """
+        Create a root node.
+
+        Parameters
+        ----------
+        **kwargs
+            The keyword arguments to pass to the model's constructor.
+
+        Returns
+        -------
+        Self
+            The created root node.
+        """
+        return cls.objects.create(
+            position=cls.position.root,
+            **kwargs,
+        )
+
+    def add_child(self, **kwargs):
+        """
+        Create a child node.
+
+        Parameters
+        ----------
+        **kwargs
+            The keyword arguments to pass to the model's constructor.
+
+        Returns
+        -------
+        Self
+            The created child node.
+        """
+        return self.__class__.objects.create(
+            position=self.position.last_child_of(self),
+            **kwargs,
+        )
+
+    def add_sibling(self, pos: Literal["before", "after"], /, **kwargs) -> Self:
+        """
+        Create a sibling node.
+
+        Parameters
+        ----------
+        pos : Literal["before", "after"]
+            The position of the sibling node relative to this node.
+            - "before": Before this node
+            - "after": After this node
+        **kwargs
+            The keyword arguments to pass to the model's constructor.
+
+        Returns
+        -------
+        Self
+            The created sibling node.
+        """
+
+        return self.__class__.objects.create(
+            position=(
+                self.position.after(self)
+                if pos == "after"
+                else self.position.before(self)
+            ),
+            **kwargs,
+        )

@@ -4,6 +4,7 @@ from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 
 from django_ltree_field.fields import LTreeField
+from django_ltree_field.models import AbstractAutoNode
 
 
 # Test models
@@ -56,3 +57,7 @@ class ProtectedNode(models.Model):
 
     def __str__(self):
         return ".".join(self.path)
+
+
+class AutoNode(AbstractAutoNode):
+    name = models.CharField(max_length=255)

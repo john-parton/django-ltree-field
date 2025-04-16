@@ -1,17 +1,30 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Literal
+from typing import Any, Literal
 
 from django.contrib.postgres.lookups import ContainedBy, DataContains
 from django.db import models
-from django.db.models import Lookup, Transform
+from django.db.models import Lookup, Transform, Value
+from django.db.models.expressions import Func
 from django.db.models.lookups import PostgresOperatorLookup
 from django.utils.translation import gettext_lazy as _
 
-from django_ltree_field.functions.transforms import NLevel
+from django_ltree_field.functions import NLevel, Subpath
+from django_ltree_field.functions.ltree import SubLTree
 
 from .constants import LTreeTrigger
+
+
+def partial_right(func: Callable, *outer_args) -> Callable:
+    """Similar to functools.partial, but allows for partial application of
+    positional arguments starting from the right
+    """
+
+    def inner(*inner_args, **kwargs):
+        return func(*inner_args, *outer_args, **kwargs)
+
+    return inner
 
 
 class LTreeField(models.Field):
@@ -88,9 +101,9 @@ class LTreeField(models.Field):
         match indices:
             # Bind the indices as appropriate
             case [index]:
-                return partial(IndexTransform, index=index)
+                return partial_right(Subpath, Value(index), Value(1))
             case [start, end]:
-                return partial(SliceTransform, start=start, end=end)
+                return partial_right(SubLTree, Value(start), Value(end))
             case _:
                 return None
 
@@ -162,28 +175,3 @@ class MatchesLookup(PostgresOperatorLookup):
 class SearchLookup(PostgresOperatorLookup):
     lookup_name = "search"
     postgres_operator = "@"
-
-
-class IndexTransform(Transform):
-    output_field = LTreeField()
-
-    def __init__(self, *args, index: int, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.index = index
-
-    def as_sql(self, compiler, connection):  # noqa: ARG002
-        lhs, params = compiler.compile(self.lhs)
-        return f"subpath({lhs}, %s, 1)", params + [self.index]
-
-
-class SliceTransform(Transform):
-    output_field = LTreeField()
-
-    def __init__(self, *args, start: int, end: int, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.start = start
-        self.end = end
-
-    def as_sql(self, compiler, connection):  # noqa: ARG002
-        lhs, params = compiler.compile(self.lhs)
-        return f"subltree({lhs}, %s, %s)", params + [self.start, self.end]

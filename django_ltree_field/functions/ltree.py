@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+from functools import cache
+
 from django.db import models
 from django.db.models import Expression, Func
 
-from .fields import LTreeField
-
 type Resolvable = Expression | str
+
+
+@cache
+def LTreeField():
+    from django_ltree_field.fields import LTreeField
+
+    return LTreeField()
 
 
 # This should be a Transform?
@@ -14,7 +21,12 @@ class SubLTree(Func):
 
     function = "subltree"
     arity = 3
-    output_field = LTreeField()  # type: ignore[assignment]
+
+    def __init__(self, *expressions: Resolvable, output_field=None, **kwargs):
+        if output_field is None:
+            output_field = LTreeField()
+
+        super().__init__(*expressions, output_field=output_field, **kwargs)
 
 
 class Subpath(Func):
@@ -29,30 +41,30 @@ class Subpath(Func):
     """
 
     function = "subpath"
-    output_field = LTreeField()  # type: ignore[assignment]
 
-    def __init__(self, *expressions: Resolvable):
+    def __init__(self, *expressions: Resolvable, output_field=None, **kwargs):
         if len(expressions) not in {2, 3}:
             msg = "Subpath takes 2 or 3 arguments"
             raise ValueError(msg)
-        super().__init__(*expressions)
 
+        if output_field is None:
+            output_field = LTreeField()
 
-class NLevel(Func):
-    function = "nlevel"
-    arity = 1
-    output_field = models.PositiveIntegerField()  # type: ignore[assignment]
+        super().__init__(*expressions, output_field=output_field, **kwargs)
 
 
 class Index(Func):
     function = "index"
-    output_field = models.IntegerField()  # type: ignore[assignment]
 
-    def __init__(self, *expressions: Resolvable):
+    def __init__(self, *expressions: Resolvable, output_field=None, **kwargs):
         if len(expressions) not in {2, 3}:
             msg = "Index takes 2 or 3 arguments"
             raise ValueError(msg)
-        super().__init__(*expressions)
+
+        if output_field is None:
+            output_field = models.IntegerField()
+
+        super().__init__(*expressions, output_field=output_field, **kwargs)
 
 
 # No text2ltree or ltree2text functions... not sure how useful they would be?
@@ -61,16 +73,19 @@ class Index(Func):
 
 class LCA(Func):
     function = "lca"
-    output_field = LTreeField()  # type: ignore[assignment]
 
-    def __init__(self, *expressions: Resolvable):
+    def __init__(self, *expressions: Resolvable, output_field=None, **kwargs):
         # Postgres docs say that LCA will only admit up to 8 arguments, but we'll let
         # the database backend throw that error, seems unlikely to occur
         # So arity should really be 1..=8
         if not expressions:
             msg = "LCA takes at least one argument"
             raise ValueError(msg)
-        super().__init__(*expressions)
+
+        if output_field is None:
+            output_field = LTreeField()
+
+        super().__init__(*expressions, output_field=output_field, **kwargs)
 
 
 class Concat(Func):
@@ -82,11 +97,14 @@ class Concat(Func):
     """
 
     function = ""  # will result in parenthesis only
-    output_field = LTreeField()  # type: ignore[assignment]
     arg_joiner = " || "
 
-    def __init__(self, *expressions: Resolvable):
+    def __init__(self, *expressions: Resolvable, output_field=None, **kwargs):
         if len(expressions) < 2:
             msg = "Concat takes at least 2 arguments"
             raise ValueError(msg)
-        super().__init__(*expressions)
+
+        if output_field is None:
+            output_field = LTreeField()
+
+        super().__init__(*expressions, output_field=output_field, **kwargs)

@@ -9,6 +9,8 @@ from django.db.models import Lookup, Transform
 from django.db.models.lookups import PostgresOperatorLookup
 from django.utils.translation import gettext_lazy as _
 
+from django_ltree_field.functions.transforms import NLevel
+
 from .constants import LTreeTrigger
 
 
@@ -93,8 +95,9 @@ class LTreeField(models.Field):
                 return None
 
 
-LTreeField.register_lookup(DataContains)
 LTreeField.register_lookup(ContainedBy)
+LTreeField.register_lookup(DataContains)
+LTreeField.register_lookup(NLevel)
 
 
 @LTreeField.register_lookup
@@ -137,6 +140,19 @@ class ParentOfLookup(Lookup):
 
 
 @LTreeField.register_lookup
+class DescendantOfLookup(Lookup):
+    # This can be done other ways, but it's a common enough use-case/pattern that we
+    # want a shortcut
+    lookup_name = "descendant_of"
+
+    def as_sql(self, compiler, connection):
+        lhs, lhs_params = self.process_lhs(compiler, connection)
+        rhs, rhs_params = self.process_rhs(compiler, connection)
+        params = lhs_params + rhs_params
+        return f"subpath({rhs}, 0, nlevel({lhs})) @> {lhs}", params
+
+
+@LTreeField.register_lookup
 class MatchesLookup(PostgresOperatorLookup):
     lookup_name = "matches"
     postgres_operator = "~"
@@ -146,18 +162,6 @@ class MatchesLookup(PostgresOperatorLookup):
 class SearchLookup(PostgresOperatorLookup):
     lookup_name = "search"
     postgres_operator = "@"
-
-
-@LTreeField.register_lookup
-class DepthTransform(Transform):
-    # "depth" is slightly more usable than "nlevel"
-    # And less confusing than "len"
-    # Might be more generic if support for a backend other than postgres were ever added
-    # If that backend uses a different function
-    lookup_name = "depth"
-    function = "NLEVEL"
-
-    output_field = models.PositiveIntegerField()  # type: ignore[assignment]
 
 
 class IndexTransform(Transform):

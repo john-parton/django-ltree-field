@@ -3,6 +3,7 @@ from __future__ import annotations
 import string
 from dataclasses import dataclass
 from typing import (
+    NotRequired,
     Self,
     TypedDict,
     assert_never,
@@ -58,7 +59,11 @@ class _Update:
 
 class _InsertStrategy(TypedDict):
     update: _Update | None
-    insertion_point: str
+    insertion_points: list[str]
+
+
+class _TreeNode(TypedDict):
+    children: NotRequired[list[_TreeNode]]
 
 
 class AutoNodeManager(models.Manager):
@@ -73,7 +78,20 @@ class AutoNodeManager(models.Manager):
         )
         super().__init__(*args, **kwargs)
 
-    def init_tree(self, tree, *, position: RelativePositionType | None = None):
+    def _flatten_tree(self, tree: _TreeNode, path: str):
+        yield self.model(
+            **tree,
+            path=path,
+        )
+
+        children = tree.get("children", [])
+
+        for suffix, child in self._labeler.label(children):
+            yield from self._flatten_tree(child, f"{path}.{suffix}")
+
+    def init_tree(
+        self, tree: _TreeNode, *, position: RelativePositionType | None = None
+    ):
         if position is None:
             position = Root()
 
@@ -81,18 +99,7 @@ class AutoNodeManager(models.Manager):
         # other keys are attributes to be passed to initializer
         path = self.move_nodes(position)
 
-        def flatten(tree, path):
-            children = tree.pop("children", [])
-
-            yield self.model(
-                **tree,
-                path=path,
-            )
-
-            for suffix, child in self._labeler.label(children):
-                yield from flatten(child, f"{path}.{suffix}")
-
-        return list(flatten(tree, path))
+        return list(self._flatten_tree(tree, path))
 
     def create(self, *args, **kwargs):
         position = kwargs.pop("position", Root())
@@ -142,46 +149,50 @@ class AutoNodeManager(models.Manager):
     def _insert_placeholder(
         self,
         *,
-        paths: list[str | None],
+        paths: list[str],
         position: RelativePositionType,
-    ):
+        count: int = 1,
+    ) -> list[str | None]:
+        # Insert {count} None sentinels at the appropriate position
+        sentinels = [None] * count
+
         match position:
             case After(rel_obj):
-                # Insert a None sentinel after rel_obj.path
-                i = paths.index(rel_obj.path)
-                paths.insert(i + 1, None)
+                # Insert sentinels after rel_obj.path
+                i = paths.index(rel_obj.path) + 1
+                return paths[:i] + sentinels + paths[i:]
             case Before(rel_obj):
-                # Insert a None sentinel before rel_obj.path
+                # Insert sentinels before rel_obj.path
                 i = paths.index(rel_obj.path)
-                paths.insert(i, None)
+                return paths[:i] + sentinels + paths[i:]
             case LastChildOf(rel_obj):
-                # Insert a None sentinel at the end
-                paths.append(None)
+                # Insert sentinels at the end
+                return paths + sentinels
             case FirstChildOf(rel_obj):
-                # Insert a None sentinel at the beginning
-                paths.insert(0, None)
+                # Insert sentinels at the beginning
+                return sentinels + paths
             case Root():
-                # Insert a None sentinel at the end
-                paths.append(None)
+                # Insert sentinels at the end
+                return paths + sentinels
             case _:
                 assert_never(position)
-
-        return paths
 
     def _get_insert_strategy(
         self,
         *,
-        position: RelativePosition,
+        position: RelativePositionType,
         paths: list[str],
+        count: int = 1,
     ) -> _InsertStrategy:
         paths_to_update = self._insert_placeholder(
             position=position,
             paths=paths,
+            count=count,
         )
 
         _updates: list[tuple[str, str]] = []
 
-        insertion_point = None
+        insertion_points: list[str] = []
 
         prefix = self._get_prefix(position)
 
@@ -190,46 +201,53 @@ class AutoNodeManager(models.Manager):
 
             if path is None:
                 # There should only be one insertion point
-                if insertion_point is not None:
-                    raise AssertionError
-                insertion_point = new_path
+                insertion_points.append(new_path)
                 continue
 
             if new_path != path:
                 _updates.append((path, new_path))
 
-        if insertion_point is None:
+        if not insertion_points:
             raise AssertionError
 
         return {
             "update": _Update.from_data(
                 _updates,
             ),
-            "insertion_point": insertion_point,
+            "insertion_points": insertion_points,
         }
 
-    def move_nodes(self, position: RelativePositionType) -> str:
+    def move_nodes(
+        self,
+        position: RelativePositionType,
+        *,
+        count: int = 1,
+    ) -> list[str]:
         siblings = self._get_siblings(position)
         paths = list(siblings.values_list("path", flat=True))
         strategy = self._get_insert_strategy(
             position=position,
             paths=paths,
+            count=count,
         )
 
         if strategy["update"] is not None:
             strategy["update"].update(self)
 
-        return strategy["insertion_point"]
+        return strategy["insertion_points"]
 
-    async def amove_nodes(self, position: RelativePositionType) -> str:
+    async def amove_nodes(
+        self, position: RelativePositionType, *, count: int = 1
+    ) -> list[str]:
         siblings = self._get_siblings(position)
         paths = [path async for path in siblings.values_list("path", flat=True)]
         strategy = self._get_insert_strategy(
             position=position,
             paths=paths,
+            count=count,
         )
 
         if strategy["update"] is not None:
             await strategy["update"].aupdate(self)
 
-        return strategy["insertion_point"]
+        return strategy["insertion_points"]

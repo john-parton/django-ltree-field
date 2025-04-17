@@ -36,7 +36,7 @@ class AbstractAutoNode(models.Model):
     ) -> None:
         self.path = self.__class__.objects.move_nodes(
             position,
-        )
+        )[0]
 
         self.save(update_fields=["path"])
 
@@ -44,9 +44,11 @@ class AbstractAutoNode(models.Model):
         self,
         position: RelativePositionType,
     ) -> None:
-        self.path = await self.__class__.objects.amove_nodes(
-            position,
-        )
+        self.path = (
+            await self.__class__.objects.amove_nodes(
+                position,
+            )
+        )[0]
 
         await self.asave(update_fields=["path"])
 

@@ -149,6 +149,13 @@ class _Update:
         )
 
 
+def _update_from_manager(
+    manager,
+    *,
+    sync: bool = True,
+): ...
+
+
 class _TreeNode(TypedDict):
     children: NotRequired[list[_TreeNode]]
 
@@ -165,7 +172,7 @@ class AutoNodeManager(models.Manager):
         )
         super().__init__(*args, **kwargs)
 
-    def _flatten_tree(self, tree: _TreeNode, path: str):
+    def _flatten_tree_step(self, tree: _TreeNode, path: str):
         children = tree.pop("children", [])
 
         yield self.model(
@@ -174,18 +181,9 @@ class AutoNodeManager(models.Manager):
         )
 
         for suffix, child in self._labeler.label(children):
-            yield from self._flatten_tree(child, f"{path}.{suffix}")
+            yield from self._flatten_tree_step(child, f"{path}.{suffix}")
 
-    def init_tree(
-        self, *trees: _TreeNode, position: RelativePositionType | None = None
-    ):
-        if position is None:
-            position = Root()
-
-        # Tree is a dictionary with a key "children" which is recursive
-        # other keys are attributes to be passed to initializer
-        paths = self.move_nodes(position)
-
+    def _flatten_trees(self, trees: _TreeNode, paths: list[str]):
         return list(
             it.chain.from_iterable(
                 map(
@@ -196,27 +194,31 @@ class AutoNodeManager(models.Manager):
             )
         )
 
-    def create(self, *args, **kwargs):
-        position = kwargs.pop("position", Root())
+    def init_tree(
+        self, *trees: _TreeNode, position: RelativePositionType | None = None
+    ):
+        """Initialize multiple trees at position."""
+        if position is None:
+            position = Root()
 
-        path = self.move_nodes(position)[0]
+        # Tree is a dictionary with a key "children" which is recursive
+        # other keys are attributes to be passed to initializer
+        paths = self.move_nodes(position)
 
-        return super().create(
-            *args,
-            **kwargs,
-            path=path,
-        )
+        return self._flatten_trees(trees, paths)
 
-    async def acreate(self, *args, **kwargs):
-        position = kwargs.pop("position", Root())
+    async def ainit_tree(
+        self, *trees: _TreeNode, position: RelativePositionType | None = None
+    ):
+        """Initialize multiple trees at position."""
+        if position is None:
+            position = Root()
 
-        path = (await self.amove_nodes(position))[0]
+        # Tree is a dictionary with a key "children" which is recursive
+        # other keys are attributes to be passed to initializer
+        paths = await self.amove_nodes(position)
 
-        return await super().acreate(
-            *args,
-            **kwargs,
-            path=path,
-        )
+        return self._flatten_trees(trees, paths)
 
     def _get_siblings(self, position: RelativePositionType) -> Self:
         match position:

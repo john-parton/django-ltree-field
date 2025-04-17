@@ -12,7 +12,7 @@ from django.db.models.functions import Cast
 from django.test import TestCase
 
 from django_ltree_field.fields import LTreeField
-from django_ltree_field.functions import Concat, Subpath
+from django_ltree_field.functions.ltree import Concat, Subpath
 from tests.test_app.models import ProtectedNode, SimpleNode
 
 
@@ -204,6 +204,43 @@ class TestSimpleNode(TestCase):
                     "path",
                     flat=True,
                 )
+            ),
+        )
+
+    def test_descendant_of(self):
+        """Test descendant_of lookup that finds descendant nodes but not the node itself."""
+        self.assertSequenceEqual(
+            [
+                "Top.Science.Astronomy",
+                "Top.Science.Astronomy.Astrophysics",
+                "Top.Science.Astronomy.Cosmology",
+            ],
+            list(
+                SimpleNode.objects.filter(
+                    path__descendant_of="Top.Science",
+                ).values_list(
+                    "path",
+                    flat=True,
+                ),
+            ),
+        )
+
+        # Test with multiple levels of descendants
+        self.assertSequenceEqual(
+            [
+                "Top.Collections.Pictures",
+                "Top.Collections.Pictures.Astronomy",
+                "Top.Collections.Pictures.Astronomy.Astronauts",
+                "Top.Collections.Pictures.Astronomy.Galaxies",
+                "Top.Collections.Pictures.Astronomy.Stars",
+            ],
+            list(
+                SimpleNode.objects.filter(
+                    path__descendant_of="Top.Collections",
+                ).values_list(
+                    "path",
+                    flat=True,
+                ),
             ),
         )
 

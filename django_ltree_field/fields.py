@@ -150,17 +150,29 @@ class ParentOfLookup(Lookup):
         return f"{lhs} = subpath({rhs}, 0, -1)", params
 
 
-@LTreeField.register_lookup
-class DescendantOfLookup(Lookup):
-    # This can be done other ways, but it's a common enough use-case/pattern that we
-    # want a shortcut
-    lookup_name = "descendant_of"
+class _PostgresOperatorProperLookup(Lookup):
+    # Same as PostgresOperatorLookup, but always excludes exact matches
 
-    def as_sql(self, compiler, connection):
+    postgres_operator = None
+
+    def as_postgresql(self, compiler, connection):
         lhs, lhs_params = self.process_lhs(compiler, connection)
         rhs, rhs_params = self.process_rhs(compiler, connection)
-        params = lhs_params + rhs_params
-        return f"subpath({rhs}, 0, nlevel({lhs})) @> {lhs}", params
+        # Double up params
+        params = (lhs_params + rhs_params) * 2
+        return f"{lhs} {self.postgres_operator} {rhs} AND {lhs} <> {rhs}", params
+
+
+@LTreeField.register_lookup
+class DescendantOfLookup(_PostgresOperatorProperLookup):
+    postgres_operator = "<@"
+    lookup_name = "descendant_of"
+
+
+@LTreeField.register_lookup
+class AncestorOfLookup(_PostgresOperatorProperLookup):
+    postgres_operator = "@>"
+    lookup_name = "ancestor_of"
 
 
 @LTreeField.register_lookup

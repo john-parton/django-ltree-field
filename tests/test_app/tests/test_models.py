@@ -244,6 +244,42 @@ class TestSimpleNode(TestCase):
             ),
         )
 
+    def test_ancestor_of(self):
+        """Test ancestor_of lookup that finds nodes that are ancestors of a given path."""
+        self.assertSequenceEqual(
+            [
+                "Top",
+                "Top.Science",
+                "Top.Science.Astronomy",
+            ],
+            list(
+                SimpleNode.objects.filter(
+                    path__ancestor_of="Top.Science.Astronomy.Astrophysics",
+                ).values_list(
+                    "path",
+                    flat=True,
+                ),
+            ),
+        )
+
+        # Test with multiple levels of ancestors
+        self.assertSequenceEqual(
+            [
+                "Top",
+                "Top.Collections",
+                "Top.Collections.Pictures",
+                "Top.Collections.Pictures.Astronomy",
+            ],
+            list(
+                SimpleNode.objects.filter(
+                    path__ancestor_of="Top.Collections.Pictures.Astronomy.Stars",
+                ).values_list(
+                    "path",
+                    flat=True,
+                ),
+            ),
+        )
+
     def test_contains(self):
         """Test contains lookup that finds nodes containing a given path."""
         self.assertSequenceEqual(

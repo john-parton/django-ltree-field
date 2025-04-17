@@ -14,7 +14,7 @@ from django_ltree_field.functions.ltree import SubLTree
 from .constants import LTreeTrigger
 
 
-def partial_right(func: Callable, *outer_args) -> Callable:
+def _partial_right(func: Callable, *outer_args) -> Callable:
     """Similar to functools.partial, but allows for partial application of
     positional arguments starting from the right
     """
@@ -99,9 +99,9 @@ class LTreeField(models.Field):
         match indices:
             # Bind the indices as appropriate
             case [index]:
-                return partial_right(Subpath, Value(index), Value(1))
+                return _partial_right(Subpath, Value(index), Value(1))
             case [start, end]:
-                return partial_right(SubLTree, Value(start), Value(end))
+                return _partial_right(SubLTree, Value(start), Value(end))
             case _:
                 return None
 
@@ -150,6 +150,18 @@ class ParentOfLookup(Lookup):
         return f"{lhs} = subpath({rhs}, 0, -1)", params
 
 
+@LTreeField.register_lookup
+class MatchesLookup(PostgresOperatorLookup):
+    lookup_name = "matches"
+    postgres_operator = "~"
+
+
+@LTreeField.register_lookup
+class SearchLookup(PostgresOperatorLookup):
+    lookup_name = "search"
+    postgres_operator = "@"
+
+
 class _PostgresOperatorProperLookup(Lookup):
     # Same as PostgresOperatorLookup, but always excludes exact matches
 
@@ -173,15 +185,3 @@ class DescendantOfLookup(_PostgresOperatorProperLookup):
 class AncestorOfLookup(_PostgresOperatorProperLookup):
     postgres_operator = "@>"
     lookup_name = "ancestor_of"
-
-
-@LTreeField.register_lookup
-class MatchesLookup(PostgresOperatorLookup):
-    lookup_name = "matches"
-    postgres_operator = "~"
-
-
-@LTreeField.register_lookup
-class SearchLookup(PostgresOperatorLookup):
-    lookup_name = "search"
-    postgres_operator = "@"

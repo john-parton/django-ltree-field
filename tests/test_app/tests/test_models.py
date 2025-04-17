@@ -1,8 +1,10 @@
 """
-test_django_tree_field
-------------
+Tests for the `django_ltree_field` models module.
 
-Tests for `django_ltree_field` models module.
+This module contains test cases for validating the functionality of the
+`django_ltree_field` package, including its custom model fields, lookups,
+and functions. The tests cover various scenarios such as cascading updates
+and deletions, path manipulations, and PostgreSQL-specific ltree operations.
 """
 
 from django.contrib.postgres.fields import ArrayField

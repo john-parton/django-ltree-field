@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Literal, Self, assert_never
+from typing import TYPE_CHECKING, ClassVar, Literal, Self
 
 from django.contrib.postgres.indexes import GistIndex
 from django.db import models
@@ -86,9 +86,7 @@ class AbstractAutoNode(models.Model):
             A queryset of descendant nodes.
         """
         return self.__class__.objects.filter(
-            path__contained_by=self.path,
-        ).exclude(
-            path=self.path,
+            path__descendant_of=self.path,
         )
 
     # Similar to treebeard's API

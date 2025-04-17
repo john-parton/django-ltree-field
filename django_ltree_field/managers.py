@@ -73,6 +73,27 @@ class AutoNodeManager(models.Manager):
         )
         super().__init__(*args, **kwargs)
 
+    def init_tree(self, tree, *, position: RelativePositionType | None = None):
+        if position is None:
+            position = Root()
+
+        # Tree is a dictionary with a key "children" which is recursive
+        # other keys are attributes to be passed to initializer
+        path = self.move_nodes(position)
+
+        def flatten(tree, path):
+            children = tree.pop("children", [])
+
+            yield self.model(
+                **tree,
+                path=path,
+            )
+
+            for suffix, child in self._labeler.label(children):
+                yield from flatten(child, f"{path}.{suffix}")
+
+        return list(flatten(tree, path))
+
     def create(self, *args, **kwargs):
         position = kwargs.pop("position", Root())
 

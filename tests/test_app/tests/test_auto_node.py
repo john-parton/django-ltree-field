@@ -1,5 +1,6 @@
 from django.test import TestCase
 
+from django_ltree_field.functions import NLevel
 from tests.test_app.models import AutoNode
 
 
@@ -83,4 +84,49 @@ class TestAutoNode(TestCase):
         self.assertSequenceEqual(
             names,
             children,
+        )
+
+    def test_init_tree(self):
+        """Test creating a tree of nodes"""
+        nodes = AutoNode.objects.init_tree(
+            {
+                "name": "Test Root5",
+                "children": [
+                    {
+                        "name": "Test Child7",
+                        "children": [
+                            {
+                                "name": "Test Child8",
+                            },
+                            {
+                                "name": "Test Child9",
+                            },
+                        ],
+                    },
+                    {
+                        "name": "Test Child10",
+                    },
+                ],
+            }
+        )
+
+        AutoNode.objects.bulk_create(nodes)
+
+        root = nodes[0]
+
+        self.assertSequenceEqual(
+            [
+                ("Test Root5", 1),
+                ("Test Child7", 2),
+                ("Test Child8", 3),
+                ("Test Child9", 3),
+                ("Test Child10", 2),
+            ],
+            list(
+                AutoNode.objects.filter(
+                    path__contained_by=root.path,
+                )
+                .annotate(depth=NLevel("path"))
+                .values_list("name", "depth")
+            ),
         )

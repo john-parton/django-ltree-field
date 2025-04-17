@@ -28,39 +28,125 @@ from .position import (
 
 @dataclass
 class _Update:
-    condition: Q
-    expression: Expression
+    updates: list[tuple[str, str]]
+    insertion_points: list[str]
+
+    @property
+    def condition(self) -> Q:
+        return Q(path__in=[row[0] for row in self.updates])
+
+    @property
+    def expression(self) -> Expression:
+        return Case(
+            *(
+                When(
+                    path=row[0],
+                    then=Value(row[1]),
+                )
+                for row in self.updates
+            ),
+            default=F("path"),
+            output_field=LTreeField(),
+        )
 
     def update(self, manager: models.Manager):
+        if not self.updates:
+            return 0
+
         return manager.filter(self.condition).update(path=self.expression)
 
     async def aupdate(self, manager: models.Manager):
+        if not self.updates:
+            return 0
+
         return await manager.filter(self.condition).aupdate(path=self.expression)
 
     @classmethod
-    def from_data(cls, data: list[tuple[str, str]]) -> Self | None:
-        if not data:
-            return None
+    def _get_prefix(cls, position: RelativePositionType) -> str:
+        match position:
+            case After(rel_obj) | Before(rel_obj):
+                stem, __, __ = rel_obj.path.rpartition(".")
+                return f"{stem}."
+            case LastChildOf(rel_obj) | FirstChildOf(rel_obj):
+                return f"{rel_obj.path}."
+            case Root():
+                return ""
+            case _:
+                assert_never(position)
 
-        return cls(
-            condition=Q(path__in=[row[0] for row in data]),
-            expression=Case(
-                *(
-                    When(
-                        path=row[0],
-                        then=Value(row[1]),
-                    )
-                    for row in data
-                ),
-                default=F("path"),
-                output_field=LTreeField(),
-            ),
+    @classmethod
+    def _insert_placeholder(
+        cls,
+        *,
+        paths: list[str],
+        position: RelativePositionType,
+        count: int = 1,
+    ) -> list[str | None]:
+        # Insert {count} None sentinels at the appropriate position
+        sentinels = [None] * count
+
+        match position:
+            case After(rel_obj):
+                # Insert sentinels after rel_obj.path
+                i = paths.index(rel_obj.path) + 1
+                return paths[:i] + sentinels + paths[i:]
+            case Before(rel_obj):
+                # Insert sentinels before rel_obj.path
+                i = paths.index(rel_obj.path)
+                return paths[:i] + sentinels + paths[i:]
+            case LastChildOf(rel_obj):
+                # Insert sentinels at the end
+                return paths + sentinels
+            case FirstChildOf(rel_obj):
+                # Insert sentinels at the beginning
+                return sentinels + paths
+            case Root():
+                # Insert sentinels at the end
+                return paths + sentinels
+            case _:
+                assert_never(position)
+
+    @classmethod
+    def calculate(
+        cls,
+        position: RelativePositionType,
+        *,
+        paths: list[str],
+        count: int = 1,
+        labeler: Labeler,
+    ) -> Self:
+        """Implementation of move_nodes logic shared between sync and async versions."""
+
+        paths_to_update = cls._insert_placeholder(
+            position=position,
+            paths=paths,
+            count=count,
         )
 
+        _updates: list[tuple[str, str]] = []
 
-class _InsertStrategy(TypedDict):
-    update: _Update | None
-    insertion_points: list[str]
+        insertion_points: list[str] = []
+
+        prefix = cls._get_prefix(position)
+
+        for suffix, path in labeler.label(paths_to_update):
+            new_path = f"{prefix}{suffix}"
+
+            if path is None:
+                # Whenever we find a None sentinel, we need to insert a new path
+                insertion_points.append(new_path)
+                continue
+
+            if new_path != path:
+                _updates.append((path, new_path))
+
+        if not insertion_points:
+            raise AssertionError
+
+        return cls(
+            updates=_updates,
+            insertion_points=insertion_points,
+        )
 
 
 class _TreeNode(TypedDict):
@@ -132,99 +218,18 @@ class AutoNodeManager(models.Manager):
             path=path,
         )
 
-    def _get_prefix(self, position: RelativePositionType) -> str:
-        match position:
-            case After(rel_obj) | Before(rel_obj):
-                stem, __, __ = rel_obj.path.rpartition(".")
-                return f"{stem}."
-            case LastChildOf(rel_obj) | FirstChildOf(rel_obj):
-                return f"{rel_obj.path}."
-            case Root():
-                return ""
-            case _:
-                assert_never(position)
-
     def _get_siblings(self, position: RelativePositionType) -> Self:
         match position:
             case After(rel_obj) | Before(rel_obj):
-                return self.filter(path__sibling_of=rel_obj.path)
+                queryset = self.filter(path__sibling_of=rel_obj.path)
             case LastChildOf(rel_obj) | FirstChildOf(rel_obj):
-                return self.filter(path__child_of=rel_obj.path)
+                queryset = self.filter(path__child_of=rel_obj.path)
             case Root():
-                return self.filter(path__depth=1)
+                queryset = self.filter(path__depth=1)
             case _:
                 assert_never(position)
 
-    def _insert_placeholder(
-        self,
-        *,
-        paths: list[str],
-        position: RelativePositionType,
-        count: int = 1,
-    ) -> list[str | None]:
-        # Insert {count} None sentinels at the appropriate position
-        sentinels = [None] * count
-
-        match position:
-            case After(rel_obj):
-                # Insert sentinels after rel_obj.path
-                i = paths.index(rel_obj.path) + 1
-                return paths[:i] + sentinels + paths[i:]
-            case Before(rel_obj):
-                # Insert sentinels before rel_obj.path
-                i = paths.index(rel_obj.path)
-                return paths[:i] + sentinels + paths[i:]
-            case LastChildOf(rel_obj):
-                # Insert sentinels at the end
-                return paths + sentinels
-            case FirstChildOf(rel_obj):
-                # Insert sentinels at the beginning
-                return sentinels + paths
-            case Root():
-                # Insert sentinels at the end
-                return paths + sentinels
-            case _:
-                assert_never(position)
-
-    def _get_insert_strategy(
-        self,
-        *,
-        position: RelativePositionType,
-        paths: list[str],
-        count: int = 1,
-    ) -> _InsertStrategy:
-        paths_to_update = self._insert_placeholder(
-            position=position,
-            paths=paths,
-            count=count,
-        )
-
-        _updates: list[tuple[str, str]] = []
-
-        insertion_points: list[str] = []
-
-        prefix = self._get_prefix(position)
-
-        for suffix, path in self._labeler.label(paths_to_update):
-            new_path = f"{prefix}{suffix}"
-
-            if path is None:
-                # There should only be one insertion point
-                insertion_points.append(new_path)
-                continue
-
-            if new_path != path:
-                _updates.append((path, new_path))
-
-        if not insertion_points:
-            raise AssertionError
-
-        return {
-            "update": _Update.from_data(
-                _updates,
-            ),
-            "insertion_points": insertion_points,
-        }
+        return queryset.values_list("path", flat=True)
 
     def move_nodes(
         self,
@@ -232,31 +237,27 @@ class AutoNodeManager(models.Manager):
         *,
         count: int = 1,
     ) -> list[str]:
-        siblings = self._get_siblings(position)
-        paths = list(siblings.values_list("path", flat=True))
-        strategy = self._get_insert_strategy(
+        updater = _Update.calculate(
             position=position,
-            paths=paths,
+            paths=list(self._get_siblings(position)),
             count=count,
+            labeler=self._labeler,
         )
 
-        if strategy["update"] is not None:
-            strategy["update"].update(self)
+        updater.update(self)
 
-        return strategy["insertion_points"]
+        return updater.insertion_points
 
     async def amove_nodes(
         self, position: RelativePositionType, *, count: int = 1
     ) -> list[str]:
-        siblings = self._get_siblings(position)
-        paths = [path async for path in siblings.values_list("path", flat=True)]
-        strategy = self._get_insert_strategy(
+        updater = _Update.calculate(
             position=position,
-            paths=paths,
+            paths=[path async for path in self._get_siblings(position)],
             count=count,
+            labeler=self._labeler,
         )
 
-        if strategy["update"] is not None:
-            await strategy["update"].aupdate(self)
+        await updater.aupdate(self)
 
-        return strategy["insertion_points"]
+        return updater.insertion_points

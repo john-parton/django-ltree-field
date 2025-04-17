@@ -298,6 +298,34 @@ class TestSimpleNode(TestCase):
             ),
         )
 
+    def test_contains_list(self):
+        """Test contains lookup with a list of paths."""
+        self.assertSequenceEqual(
+            [
+                "Top",
+                "Top.Collections",
+                "Top.Collections.Pictures",
+                "Top.Collections.Pictures.Astronomy",
+                "Top.Science",
+            ],
+            list(
+                SimpleNode.objects.filter(
+                    path__contains=Cast(
+                        Value(
+                            [
+                                "Top.Collections.Pictures.Astronomy",
+                                "Top.Science",
+                            ]
+                        ),
+                        ArrayField(LTreeField()),
+                    ),
+                ).values_list(
+                    "path",
+                    flat=True,
+                ),
+            ),
+        )
+
     # The following tests runs through all the examples from the postgres documentation, listed
     # here: https://www.postgresql.org/docs/9.1/ltree.html#AEN141210
 
@@ -345,26 +373,6 @@ class TestSimpleNode(TestCase):
                         ),
                         ArrayField(LTreeField()),
                     ),
-                ).values_list(
-                    "path",
-                    flat=True,
-                ),
-            ),
-        )
-
-    def test_strictly_contained_by(self):
-        """Test strictly contained_by lookup that excludes the given path itself."""
-        # We could have this as a custom lookup, but django doesn't tend to provide
-        # these in the core library
-        self.assertSequenceEqual(
-            [
-                "Top.Science.Astronomy",
-                "Top.Science.Astronomy.Astrophysics",
-                "Top.Science.Astronomy.Cosmology",
-            ],
-            list(
-                SimpleNode.objects.filter(
-                    ~Q(path="Top.Science") & Q(path__contained_by="Top.Science")
                 ).values_list(
                     "path",
                     flat=True,

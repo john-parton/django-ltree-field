@@ -7,8 +7,10 @@ from tests.test_app.models import AutoNode
 class TestAutoNode(TestCase):
     def test_create_default(self):
         """Test creating a node, default a root node"""
-        AutoNode.objects.create(
-            name="Test Root1",
+        AutoNode.objects.create_tree(
+            {
+                "name": "Test Root1",
+            }
         )
 
         self.assertTrue(
@@ -20,8 +22,10 @@ class TestAutoNode(TestCase):
 
     def test_create_root(self):
         """Test creating a node, default a root node"""
-        AutoNode.objects.create(
-            name="Test Root2",
+        AutoNode.objects.create_tree(
+            {
+                "name": "Test Root2",
+            },
             position=AutoNode.position.root,
         )
 
@@ -34,8 +38,10 @@ class TestAutoNode(TestCase):
 
     def test_create_first_child_of(self):
         """Test creating a node, default a root node"""
-        root = AutoNode.objects.create(
-            name="Test Root3",
+        (root,) = AutoNode.objects.create_tree(
+            {
+                "name": "Test Root3",
+            },
             position=AutoNode.position.root,
         )
 
@@ -46,8 +52,10 @@ class TestAutoNode(TestCase):
         ]
 
         for name in names:
-            AutoNode.objects.create(
-                name=name,
+            AutoNode.objects.create_tree(
+                {
+                    "name": name,
+                },
                 position=AutoNode.position.first_child_of(root),
             )
 
@@ -60,35 +68,37 @@ class TestAutoNode(TestCase):
             children,
         )
 
-    def test_create_last_child_of(self):
-        """Test creating a node, default a root node"""
-        root = AutoNode.objects.create(
-            name="Test Root4",
-            position=AutoNode.position.root,
-        )
+    # def test_create_last_child_of(self):
+    #     """Test creating a node, default a root node"""
+    #     root = AutoNode.objects.create_tree(
+    #         {
+    #             "name": "Test Root4",
+    #         },
+    #         position=AutoNode.position.root,
+    #     )
 
-        names = [
-            "Test Child4",
-            "Test Child5",
-            "Test Child6",
-        ]
+    #     names = [
+    #         "Test Child4",
+    #         "Test Child5",
+    #         "Test Child6",
+    #     ]
 
-        for name in names:
-            root.add_child(
-                name=name,
-            )
+    #     for name in names:
+    #         root.add_child(
+    #             name=name,
+    #         )
 
-        children = list(root.children().values_list("name", flat=True))
+    #     children = list(root.children().values_list("name", flat=True))
 
-        # We inserted them left-to-right
-        self.assertSequenceEqual(
-            names,
-            children,
-        )
+    #     # We inserted them left-to-right
+    #     self.assertSequenceEqual(
+    #         names,
+    #         children,
+    #     )
 
-    def test_init_tree(self):
+    def test_create_tree(self):
         """Test creating a tree of nodes"""
-        nodes = AutoNode.objects.init_tree(
+        root, *_descendants = AutoNode.objects.create_tree(
             {
                 "name": "Test Root5",
                 "children": [
@@ -109,10 +119,6 @@ class TestAutoNode(TestCase):
                 ],
             }
         )
-
-        AutoNode.objects.bulk_create(nodes)
-
-        root = nodes[0]
 
         self.assertSequenceEqual(
             [

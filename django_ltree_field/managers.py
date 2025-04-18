@@ -2,16 +2,21 @@ from __future__ import annotations
 
 import itertools as it
 import string
-from dataclasses import dataclass
 from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Literal,
     NotRequired,
     Self,
     TypedDict,
     assert_never,
+    overload,
 )
 
 from django.db import models
-from django.db.models import Case, Expression, F, Q, Value, When
+from django.db.models import Case, F, Q, Value, When
+from django.db.models.lookups import GreaterThan, GreaterThanOrEqual
 
 from django_ltree_field.fields import LTreeField
 
@@ -25,135 +30,13 @@ from .position import (
     Root,
 )
 
-
-@dataclass
-class _Update:
-    updates: list[tuple[str, str]]
-    insertion_points: list[str]
-
-    @property
-    def condition(self) -> Q:
-        return Q(path__in=[row[0] for row in self.updates])
-
-    @property
-    def expression(self) -> Expression:
-        return Case(
-            *(
-                When(
-                    path=row[0],
-                    then=Value(row[1]),
-                )
-                for row in self.updates
-            ),
-            default=F("path"),
-            output_field=LTreeField(),
-        )
-
-    def update(self, manager: models.Manager):
-        if not self.updates:
-            return 0
-
-        return manager.filter(self.condition).update(path=self.expression)
-
-    async def aupdate(self, manager: models.Manager):
-        if not self.updates:
-            return 0
-
-        return await manager.filter(self.condition).aupdate(path=self.expression)
-
-    @classmethod
-    def _get_prefix(cls, position: RelativePositionType) -> str:
-        match position:
-            case After(rel_obj) | Before(rel_obj):
-                stem, __, __ = rel_obj.path.rpartition(".")
-                return f"{stem}."
-            case LastChildOf(rel_obj) | FirstChildOf(rel_obj):
-                return f"{rel_obj.path}."
-            case Root():
-                return ""
-            case _:
-                assert_never(position)
-
-    @classmethod
-    def _insert_placeholder(
-        cls,
-        *,
-        paths: list[str],
-        position: RelativePositionType,
-        count: int = 1,
-    ) -> list[str | None]:
-        # Insert {count} None sentinels at the appropriate position
-        sentinels = [None] * count
-
-        match position:
-            case After(rel_obj):
-                # Insert sentinels after rel_obj.path
-                i = paths.index(rel_obj.path) + 1
-                return paths[:i] + sentinels + paths[i:]
-            case Before(rel_obj):
-                # Insert sentinels before rel_obj.path
-                i = paths.index(rel_obj.path)
-                return paths[:i] + sentinels + paths[i:]
-            case LastChildOf(rel_obj):
-                # Insert sentinels at the end
-                return paths + sentinels
-            case FirstChildOf(rel_obj):
-                # Insert sentinels at the beginning
-                return sentinels + paths
-            case Root():
-                # Insert sentinels at the end
-                return paths + sentinels
-            case _:
-                assert_never(position)
-
-    @classmethod
-    def calculate(
-        cls,
-        position: RelativePositionType,
-        *,
-        paths: list[str],
-        count: int = 1,
-        labeler: Labeler,
-    ) -> Self:
-        """Implementation of move_nodes logic shared between sync and async versions."""
-
-        paths_to_update = cls._insert_placeholder(
-            position=position,
-            paths=paths,
-            count=count,
-        )
-
-        _updates: list[tuple[str, str]] = []
-
-        insertion_points: list[str] = []
-
-        prefix = cls._get_prefix(position)
-
-        for suffix, path in labeler.label(paths_to_update):
-            new_path = f"{prefix}{suffix}"
-
-            if path is None:
-                # Whenever we find a None sentinel, we need to insert a new path
-                insertion_points.append(new_path)
-                continue
-
-            if new_path != path:
-                _updates.append((path, new_path))
-
-        if not insertion_points:
-            raise AssertionError
-
-        return cls(
-            updates=_updates,
-            insertion_points=insertion_points,
-        )
+if TYPE_CHECKING:
+    from collections.abc import Awaitable
 
 
-def _update_from_manager(
-    manager,
-    *,
-    sync: bool = True,
-): ...
+class _MoveData(TypedDict):
+    path: str
+    do_move: bool
 
 
 class _TreeNode(TypedDict):
@@ -184,17 +67,16 @@ class AutoNodeManager(models.Manager):
             yield from self._flatten_tree_step(child, f"{path}.{suffix}")
 
     def _flatten_trees(self, trees: _TreeNode, paths: list[str]):
-        return list(
-            it.chain.from_iterable(
-                map(
-                    self._flatten_tree,
-                    trees,
-                    paths,
-                )
+        return it.chain.from_iterable(
+            map(
+                self._flatten_tree_step,
+                trees,
+                paths,
             )
         )
 
-    def init_tree(
+    # Should this be "create_trees" (plural?)
+    def create_tree(
         self, *trees: _TreeNode, position: RelativePositionType | None = None
     ):
         """Initialize multiple trees at position."""
@@ -205,9 +87,9 @@ class AutoNodeManager(models.Manager):
         # other keys are attributes to be passed to initializer
         paths = self.move_nodes(position)
 
-        return self._flatten_trees(trees, paths)
+        return self.bulk_create(self._flatten_trees(trees, paths))
 
-    async def ainit_tree(
+    async def acreate_tree(
         self, *trees: _TreeNode, position: RelativePositionType | None = None
     ):
         """Initialize multiple trees at position."""
@@ -218,20 +100,148 @@ class AutoNodeManager(models.Manager):
         # other keys are attributes to be passed to initializer
         paths = await self.amove_nodes(position)
 
-        return self._flatten_trees(trees, paths)
+        return await self.abulk_create(
+            self._flatten_trees(trees, paths),
+        )
 
-    def _get_siblings(self, position: RelativePositionType) -> Self:
+    def _get_prefix(self, position: RelativePositionType) -> str:
         match position:
             case After(rel_obj) | Before(rel_obj):
-                queryset = self.filter(path__sibling_of=rel_obj.path)
+                stem, __, __ = rel_obj.path.rpartition(".")
+                return f"{stem}."
             case LastChildOf(rel_obj) | FirstChildOf(rel_obj):
-                queryset = self.filter(path__child_of=rel_obj.path)
+                return f"{rel_obj.path}."
             case Root():
-                queryset = self.filter(path__depth=1)
+                return ""
             case _:
                 assert_never(position)
 
-        return queryset.values_list("path", flat=True)
+    def _get_siblings(self, position: RelativePositionType) -> Self:
+        match position:
+            case After(rel_obj):
+                queryset = self.filter(path__sibling_of=rel_obj.path).annotate(
+                    do_move=GreaterThan(
+                        F("path"),
+                        Value(rel_obj.path),
+                    )
+                )
+            case Before(rel_obj):
+                queryset = self.filter(path__sibling_of=rel_obj.path).annotate(
+                    do_move=GreaterThanOrEqual(
+                        F("path"),
+                        Value(rel_obj.path),
+                    )
+                )
+            case LastChildOf(rel_obj):
+                queryset = self.filter(path__child_of=rel_obj.path).annotate(
+                    do_move=Value(False),
+                )
+            case FirstChildOf(rel_obj):
+                queryset = self.filter(path__child_of=rel_obj.path).annotate(
+                    do_move=Value(True),
+                )
+            case Root():
+                queryset = self.filter(path__depth=1).annotate(do_move=Value(False))
+            case _:
+                assert_never(position)
+
+        return queryset.values(
+            "path",
+            "do_move",
+        )
+
+    @overload
+    def _update_impl(
+        self,
+        *,
+        position: RelativePositionType,
+        move_data: list[_MoveData],
+        count: int = 1,
+        sync: Literal[True],
+    ) -> list[str] | Callable[[], list[str]]: ...
+
+    @overload
+    def _update_impl(
+        self,
+        *,
+        position: RelativePositionType,
+        move_data: list[_MoveData],
+        count: int = 1,
+        sync: Literal[False],
+    ) -> list[str] | Callable[[], Awaitable[list[str]]]: ...
+
+    def _update_impl(
+        self,
+        *,
+        position: RelativePositionType,
+        move_data: list[_MoveData],
+        count: int = 1,
+        sync: bool = True,
+    ) -> list[str] | Callable[[], list[str]] | Callable[[], Awaitable[list[str]]]:
+        # Sentinels go at the first True move data, or end of list if there isn't one
+        placeholder_index = next(
+            (i for i, row in enumerate(move_data) if row["do_move"]),
+            len(move_data),
+        )
+
+        with_placeholders = (
+            move_data[:placeholder_index]
+            + ([None] * count)
+            + move_data[placeholder_index:]
+        )
+
+        _updates: list[tuple[str, str]] = []
+
+        insertion_points: list[str] = []
+
+        prefix = self._get_prefix(position)
+
+        for suffix, row in self._labeler.label(with_placeholders):
+            new_path = f"{prefix}{suffix}"
+
+            if row is None:
+                # Whenever we find a None sentinel, we need to insert a new path
+                insertion_points.append(new_path)
+                continue
+
+            if row["path"] != new_path:
+                _updates.append((row["path"], new_path))
+
+        if not insertion_points:
+            raise AssertionError
+
+        # Eager return
+        if not _updates:
+            return insertion_points
+
+        to_update = self.filter(path__in=[row[0] for row in _updates])
+        update_kwargs = {
+            "path": Case(
+                *(
+                    When(
+                        path=row[0],
+                        then=Value(row[1]),
+                    )
+                    for row in _updates
+                ),
+                default=F("path"),
+                output_field=LTreeField(),
+            )
+        }
+
+        if sync:
+
+            def inner() -> list[str]:
+                to_update.update(**update_kwargs)
+                return insertion_points
+
+            return inner
+
+        async def inner() -> list[str]:
+            await to_update.aupdate(**update_kwargs)
+            return insertion_points
+
+        return inner
 
     def move_nodes(
         self,
@@ -239,27 +249,33 @@ class AutoNodeManager(models.Manager):
         *,
         count: int = 1,
     ) -> list[str]:
-        updater = _Update.calculate(
+        insertion_points = self._update_impl(
             position=position,
-            paths=list(self._get_siblings(position)),
+            move_data=list(self._get_siblings(position)),
             count=count,
-            labeler=self._labeler,
+            sync=True,
         )
 
-        updater.update(self)
+        if callable(insertion_points):
+            # If the update is a callable, we need to call it to get the result
+            return insertion_points()
 
-        return updater.insertion_points
+        return insertion_points
 
     async def amove_nodes(
-        self, position: RelativePositionType, *, count: int = 1
+        self,
+        position: RelativePositionType,
+        *,
+        count: int = 1,
     ) -> list[str]:
-        updater = _Update.calculate(
+        insertion_points = self._update_impl(
             position=position,
-            paths=[path async for path in self._get_siblings(position)],
+            move_data=[row async for row in self._get_siblings(position)],
             count=count,
-            labeler=self._labeler,
+            sync=False,
         )
 
-        await updater.aupdate(self)
+        if callable(insertion_points):
+            return await insertion_points()
 
-        return updater.insertion_points
+        return insertion_points

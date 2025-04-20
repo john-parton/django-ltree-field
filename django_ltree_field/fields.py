@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Literal
+from functools import partial
+from typing import Callable, Literal
 
 from django.contrib.postgres.lookups import ContainedBy, DataContains
 from django.db import models
@@ -14,7 +15,7 @@ from django_ltree_field.functions.ltree import SubLTree
 from .constants import LTreeTrigger
 
 
-def _partial_right(func: Callable, *outer_args) -> Callable:
+def _partial_right[R](func: Callable[..., R], *outer_args) -> Callable[..., R]:
     """Similar to functools.partial, but allows for partial application of
     positional arguments starting from the right
     """

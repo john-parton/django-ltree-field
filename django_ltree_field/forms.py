@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 def movenodeform_factory(
     model: AbstractAutoNode,
-    *args,
     **kwargs,
 ):
     class BaseForm(forms.ModelForm):
@@ -42,7 +41,7 @@ def movenodeform_factory(
                     pk=self.instance.pk
                 )
 
-        def save(self, commit=True):
+        def save(self, commit: bool = True):
             instance = super().save(commit=False)
 
             reference_node = self.cleaned_data["reference_node"]

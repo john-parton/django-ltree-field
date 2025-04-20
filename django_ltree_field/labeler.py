@@ -66,9 +66,16 @@ class Labeler:
             1,
         )
 
-        for chars, item in zip(
-            it.product(self.alphabet, repeat=width),
+        labels = map(
+            "".join,
+            it.islice(
+                it.product(self.alphabet, repeat=width),
+                len(items),
+            ),
+        )
+
+        return zip(
+            labels,
             items,
-            strict=False,
-        ):
-            yield "".join(chars), item
+            strict=True,
+        )

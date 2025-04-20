@@ -4,7 +4,6 @@ import itertools as it
 import string
 from typing import (
     TYPE_CHECKING,
-    Any,
     Callable,
     Literal,
     NotRequired,
@@ -184,6 +183,8 @@ class AutoNodeManager(models.Manager):
             len(move_data),
         )
 
+        # Copy version of
+        # move_data[placeholder_index:placeholder_index] = [None] * count
         with_placeholders = (
             move_data[:placeholder_index]
             + ([None] * count)

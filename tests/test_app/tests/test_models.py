@@ -8,7 +8,7 @@ and deletions, path manipulations, and PostgreSQL-specific ltree operations.
 """
 
 from django.contrib.postgres.fields import ArrayField
-from django.db import InternalError
+from django.db import ProgrammingError
 from django.db.models import Count, Exists, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Cast
 from django.test import TestCase
@@ -21,7 +21,7 @@ from tests.test_app.models import ProtectedNode, SimpleNode
 class TestCascade(TestCase):
     def test_forbid_unrooted(self):
         """Test that unrooted paths are forbidden in SimpleNode."""
-        with self.assertRaises(InternalError):
+        with self.assertRaises(ProgrammingError):
             SimpleNode.objects.create(path="Top.Unrooted.Deep.Down")
 
     def test_cascade_delete(self):
@@ -75,7 +75,7 @@ class TestCascade(TestCase):
 class TestProtected(TestCase):
     def test_protected_create(self):
         """Test that unrooted paths are forbidden in ProtectedNode."""
-        with self.assertRaises(InternalError):
+        with self.assertRaises(ProgrammingError):
             ProtectedNode.objects.create(path="Top.Unrooted.Deep.Down")
 
     def test_protected_delete(self):
@@ -85,7 +85,7 @@ class TestProtected(TestCase):
 
         self.assertTrue(ProtectedNode.objects.filter(path="Top.Collections").exists())
 
-        with self.assertRaises(InternalError):
+        with self.assertRaises(ProgrammingError):
             ProtectedNode.objects.filter(path="Top").delete()
 
     def test_protected_update(self):
@@ -95,7 +95,7 @@ class TestProtected(TestCase):
 
         self.assertTrue(ProtectedNode.objects.filter(path="Top.Collections").exists())
 
-        with self.assertRaises(InternalError):
+        with self.assertRaises(ProgrammingError):
             ProtectedNode.objects.filter(path="Top").update(path="Top2")
 
 

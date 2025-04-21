@@ -6,14 +6,14 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('test_app', '0002_autonode'),
+        ("test_app", "0002_autonode"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='autonode',
-            name='name',
-            field=models.CharField(default='', max_length=255),
+            model_name="autonode",
+            name="name",
+            field=models.CharField(default="", max_length=255),
             preserve_default=False,
         ),
     ]

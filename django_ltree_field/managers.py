@@ -14,7 +14,7 @@ from typing import (
 )
 
 from django.db import models
-from django.db.models import Case, F, Q, Value, When
+from django.db.models import Case, F, Value, When
 from django.db.models.lookups import GreaterThan, GreaterThanOrEqual
 
 from django_ltree_field.fields import LTreeField

@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.db.utils import load_backend
 
 
 def should_patch_schema_editor() -> bool:

@@ -6,6 +6,7 @@ for LTreeFields during model creation, alteration, and deletion.
 """
 
 import pytest
+
 from tests.test_app.models import SimpleNode
 
 

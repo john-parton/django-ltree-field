@@ -8,7 +8,6 @@ import django_ltree_field.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("test_app", "0001_initial"),
     ]
@@ -17,13 +16,30 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="AutoNode",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("path", django_ltree_field.fields.LTreeField(triggers=django_ltree_field.constants.LTreeTrigger["CASCADE"])),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "path",
+                    django_ltree_field.fields.LTreeField(
+                        triggers=django_ltree_field.constants.LTreeTrigger["CASCADE"]
+                    ),
+                ),
             ],
             options={
                 "ordering": ["path"],
                 "abstract": False,
-                "indexes": [django.contrib.postgres.indexes.GistIndex(fields=["path"], name="test_app_autonode__path_idx")],
+                "indexes": [
+                    django.contrib.postgres.indexes.GistIndex(
+                        fields=["path"], name="test_app_autonode__path_idx"
+                    )
+                ],
             },
         ),
     ]

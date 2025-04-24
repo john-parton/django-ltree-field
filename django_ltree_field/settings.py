@@ -1,3 +1,10 @@
+"""
+Settings module for configuring ltree field behavior.
+
+This module contains utility functions and settings related to
+the ltree field, including whether to patch the schema editor.
+"""
+
 from django.conf import settings
 
 

@@ -15,9 +15,7 @@ from .constants import LTreeTrigger
 
 
 def _partial_right[R](func: Callable[..., R], *outer_args) -> Callable[..., R]:
-    """Similar to functools.partial, but allows for partial application of
-    positional arguments starting from the right
-    """
+    """Partial application of positional arguments starting from the right."""
 
     def inner(*inner_args, **kwargs):
         return func(*inner_args, *outer_args, **kwargs)

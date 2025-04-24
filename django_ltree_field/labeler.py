@@ -1,11 +1,32 @@
+"""
+Labeling utility for PostgreSQL ltree path components.
+
+This module provides functionality for generating fixed-width string labels
+in lexicographical order. It's primarily used for creating consistent, sortable
+labels for tree structures when working with PostgreSQL's ltree data type.
+
+The Labeler class can convert arbitrary collections of items into labeled pairs
+where each generated label maintains the original collection's sort order when
+the labels are sorted lexicographically.
+
+Example:
+    ```python
+    labeler = Labeler(alphabet="0123456789")
+    items = ["apple", "banana", "cherry"]
+    labels = list(labeler.label(items))
+    # Results in: [("0", "apple"), ("1", "banana"), ("2", "cherry")]
+    ```
+
+The generated labels are guaranteed to be of uniform width and unique within
+the provided collection.
+"""
+
 from __future__ import annotations
 
 import itertools as it
 import math
 from collections.abc import Collection, Hashable, Iterable
-from typing import (
-    TYPE_CHECKING,
-)
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -27,7 +48,7 @@ class Labeler:
     alphabet: str
 
     def __init__(self, alphabet: str):
-        if len(alphabet) < 2:
+        if len(alphabet) < 2:  # noqa: PLR2004
             msg = "Alphabet must contain at least 2 characters."
             raise ValueError(msg)
 

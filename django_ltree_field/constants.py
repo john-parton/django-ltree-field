@@ -4,9 +4,7 @@ import enum
 
 
 class LTreeTrigger(enum.Enum):
-    """
-    LTreeTrigger is an enumeration that defines the types of triggers
-    that can be applied to an LTree field in a database.
+    """Control the behavior of triggers for LTree fields.
 
     Attributes
     ----------

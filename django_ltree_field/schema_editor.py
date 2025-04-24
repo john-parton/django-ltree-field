@@ -269,11 +269,11 @@ def _add_ltree_triggers(
 
     schema_editor.execute(
         f"""
-        CREATE TRIGGER {meta['trigger_name']}
-            AFTER DELETE OR INSERT OR UPDATE OF {meta['column_name']}
-            ON {meta['table_name']}
+        CREATE TRIGGER {meta["trigger_name"]}
+            AFTER DELETE OR INSERT OR UPDATE OF {meta["column_name"]}
+            ON {meta["table_name"]}
             FOR EACH ROW
-            EXECUTE PROCEDURE {meta['function_name']}();
+            EXECUTE PROCEDURE {meta["function_name"]}();
         """
     )
 
@@ -307,8 +307,8 @@ def _delete_ltree_triggers(
 
     schema_editor.execute(
         f"""
-        DROP TRIGGER IF EXISTS {meta['trigger_name']} ON {meta['table_name']};
-        DROP FUNCTION IF EXISTS {meta['function_name']}();
+        DROP TRIGGER IF EXISTS {meta["trigger_name"]} ON {meta["table_name"]};
+        DROP FUNCTION IF EXISTS {meta["function_name"]}();
         """
     )
 

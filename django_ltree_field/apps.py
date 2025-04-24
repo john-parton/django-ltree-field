@@ -27,8 +27,8 @@ def patch_schema_editor() -> None:
             if not issubclass(schema_editor_class, DatabaseSchemaEditorProtocol):
                 msg = (
                     f"Schema editor class {schema_editor_class!r} does not implement "
-                    "DatabaseSchemaEditorProtocol.  Most likely you are on a version of "
-                    "Django that is not supported by django-ltree-field."
+                    "DatabaseSchemaEditorProtocol.  Most likely you are on a version "
+                    "of Django that is not supported by django-ltree-field."
                 )
                 raise TypeError(msg)
 

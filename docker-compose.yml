@@ -3,7 +3,7 @@ version: '2.2'
 services:
 
   db:
-    image: postgres:13.2
+    image: postgres:16
     shm_size: 1g
     ports:
       - "5444:5432"

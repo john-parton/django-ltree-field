@@ -1,6 +1,6 @@
 [project]
 name = "django_ltree_field"
-version = "0.1.7"
+version = "0.2.0"
 description = "postgresql ltree for django"
 readme = "README.md"
 requires-python = ">=3.9"
